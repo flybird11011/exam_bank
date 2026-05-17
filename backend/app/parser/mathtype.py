@@ -15,6 +15,14 @@ except Exception:  # pragma: no cover - pythoncom is optional outside Windows
 
 
 HEADER_PREFIX_LEN = 28
+OLE_SIGNATURE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+END_OF_CHAIN = 0xFFFFFFFE
+FREE_SECTOR = 0xFFFFFFFF
+FAT_SECTOR = 0xFFFFFFFD
+DIFAT_SECTOR = 0xFFFFFFFC
+MAX_HEADER_DIFAT_ENTRIES = 109
+DIRECTORY_ENTRY_SIZE = 128
+ROOT_ENTRY_NAME = "Root Entry"
 
 
 def _decode_signed_value(reader: "_ByteReader") -> int:
@@ -620,7 +628,186 @@ def _parse_equation_native_stream(stream_bytes: bytes) -> str | None:
         return None
 
 
-def _read_equation_native_stream(ole_bytes: bytes) -> Optional[bytes]:
+@dataclass
+class _OleDirectoryEntry:
+    name: str
+    obj_type: int
+    start_sector: int
+    size: int
+
+
+class _OleCompoundFile:
+    def __init__(self, data: bytes):
+        if len(data) < 512 or data[:8] != OLE_SIGNATURE:
+            raise ValueError("not an OLE compound file")
+
+        self._data = data
+        self.sector_shift = self._read_u16(30)
+        self.mini_sector_shift = self._read_u16(32)
+        self.sector_size = 1 << self.sector_shift
+        self.mini_sector_size = 1 << self.mini_sector_shift
+        self.num_fat_sectors = self._read_u32(44)
+        self.dir_start_sector = self._read_u32(48)
+        self.mini_stream_cutoff = self._read_u32(56)
+        self.first_mini_fat_sector = self._read_u32(60)
+        self.num_mini_fat_sectors = self._read_u32(64)
+        self.first_difat_sector = self._read_u32(68)
+        self.num_difat_sectors = self._read_u32(72)
+        self.fat_sectors = self._load_fat_sectors()
+        self.fat = self._load_fat()
+        self.directory_entries = self._load_directory_entries()
+        self.root_entry = next(
+            (entry for entry in self.directory_entries if entry.name == ROOT_ENTRY_NAME and entry.obj_type == 5),
+            None,
+        )
+        self.root_stream = self._read_regular_stream(self.root_entry.start_sector, self.root_entry.size) if self.root_entry else b""
+        self.mini_fat = self._load_mini_fat()
+
+    def _read_u16(self, offset: int) -> int:
+        return int.from_bytes(self._data[offset : offset + 2], "little")
+
+    def _read_u32(self, offset: int) -> int:
+        return int.from_bytes(self._data[offset : offset + 4], "little")
+
+    def _sector_offset(self, sector_index: int) -> int:
+        return 512 + sector_index * self.sector_size
+
+    def _get_sector(self, sector_index: int) -> bytes:
+        start = self._sector_offset(sector_index)
+        end = start + self.sector_size
+        if start >= len(self._data):
+            return b""
+        return self._data[start:end]
+
+    def _sector_chain(self, start_sector: int) -> list[int]:
+        chain: list[int] = []
+        seen: set[int] = set()
+        sector = start_sector
+        while sector not in {END_OF_CHAIN, FREE_SECTOR, FAT_SECTOR, DIFAT_SECTOR} and sector < len(self.fat):
+            if sector in seen:
+                break
+            seen.add(sector)
+            chain.append(sector)
+            sector = self.fat[sector]
+        return chain
+
+    def _load_fat_sectors(self) -> list[int]:
+        fat_sectors: list[int] = []
+        for index in range(MAX_HEADER_DIFAT_ENTRIES):
+            sector = self._read_u32(76 + index * 4)
+            if sector != FREE_SECTOR:
+                fat_sectors.append(sector)
+
+        next_difat_sector = self.first_difat_sector
+        remaining = self.num_difat_sectors
+        entries_per_difat_sector = (self.sector_size // 4) - 1
+        while remaining > 0 and next_difat_sector not in {END_OF_CHAIN, FREE_SECTOR}:
+            sector_bytes = self._get_sector(next_difat_sector)
+            if len(sector_bytes) < self.sector_size:
+                break
+            for index in range(entries_per_difat_sector):
+                sector = int.from_bytes(sector_bytes[index * 4 : (index + 1) * 4], "little")
+                if sector != FREE_SECTOR:
+                    fat_sectors.append(sector)
+            next_difat_sector = int.from_bytes(sector_bytes[self.sector_size - 4 : self.sector_size], "little")
+            remaining -= 1
+
+        return fat_sectors[: self.num_fat_sectors]
+
+    def _load_fat(self) -> list[int]:
+        fat: list[int] = []
+        for sector_index in self.fat_sectors:
+            sector_bytes = self._get_sector(sector_index)
+            if len(sector_bytes) < self.sector_size:
+                continue
+            fat.extend(int.from_bytes(sector_bytes[offset : offset + 4], "little") for offset in range(0, self.sector_size, 4))
+        return fat
+
+    def _read_regular_stream(self, start_sector: int, size: int) -> bytes:
+        if size <= 0:
+            return b""
+
+        chunks: list[bytes] = []
+        remaining = size
+        for sector_index in self._sector_chain(start_sector):
+            sector_bytes = self._get_sector(sector_index)
+            if not sector_bytes:
+                break
+            take = min(remaining, len(sector_bytes))
+            chunks.append(sector_bytes[:take])
+            remaining -= take
+            if remaining <= 0:
+                break
+        return b"".join(chunks)[:size]
+
+    def _load_directory_entries(self) -> list[_OleDirectoryEntry]:
+        directory_bytes = b"".join(self._get_sector(sector_index) for sector_index in self._sector_chain(self.dir_start_sector))
+        entries: list[_OleDirectoryEntry] = []
+        for offset in range(0, len(directory_bytes), DIRECTORY_ENTRY_SIZE):
+            entry_bytes = directory_bytes[offset : offset + DIRECTORY_ENTRY_SIZE]
+            if len(entry_bytes) < DIRECTORY_ENTRY_SIZE:
+                continue
+            name_length = int.from_bytes(entry_bytes[64:66], "little")
+            if name_length < 2:
+                continue
+            name = entry_bytes[: name_length - 2].decode("utf-16le", errors="ignore")
+            obj_type = entry_bytes[66]
+            start_sector = int.from_bytes(entry_bytes[116:120], "little")
+            size = int.from_bytes(entry_bytes[120:128], "little")
+            entries.append(_OleDirectoryEntry(name=name, obj_type=obj_type, start_sector=start_sector, size=size))
+        return entries
+
+    def _load_mini_fat(self) -> list[int]:
+        if self.num_mini_fat_sectors == 0 or self.first_mini_fat_sector in {END_OF_CHAIN, FREE_SECTOR}:
+            return []
+
+        mini_fat_bytes = self._read_regular_stream(
+            self.first_mini_fat_sector,
+            self.num_mini_fat_sectors * self.sector_size,
+        )
+        return [
+            int.from_bytes(mini_fat_bytes[offset : offset + 4], "little")
+            for offset in range(0, len(mini_fat_bytes), 4)
+            if len(mini_fat_bytes[offset : offset + 4]) == 4
+        ]
+
+    def read_stream(self, stream_name: str) -> bytes | None:
+        entry = next((item for item in self.directory_entries if item.name == stream_name and item.obj_type == 2), None)
+        if entry is None:
+            return None
+        if entry.size == 0:
+            return b""
+        if entry.size < self.mini_stream_cutoff and self.root_stream and self.mini_fat and entry.name != ROOT_ENTRY_NAME:
+            return self._read_mini_stream(entry.start_sector, entry.size)
+        return self._read_regular_stream(entry.start_sector, entry.size)
+
+    def _read_mini_stream(self, start_sector: int, size: int) -> bytes:
+        if size <= 0 or not self.root_stream or not self.mini_fat:
+            return b""
+
+        chunks: list[bytes] = []
+        remaining = size
+        seen: set[int] = set()
+        mini_sector = start_sector
+        while mini_sector not in {END_OF_CHAIN, FREE_SECTOR} and mini_sector < len(self.mini_fat):
+            if mini_sector in seen:
+                break
+            seen.add(mini_sector)
+            start = mini_sector * self.mini_sector_size
+            end = start + self.mini_sector_size
+            sector_bytes = self.root_stream[start:end]
+            if not sector_bytes:
+                break
+            take = min(remaining, len(sector_bytes))
+            chunks.append(sector_bytes[:take])
+            remaining -= take
+            if remaining <= 0:
+                break
+            mini_sector = self.mini_fat[mini_sector]
+        return b"".join(chunks)[:size]
+
+
+def _read_equation_native_stream_via_pythoncom(ole_bytes: bytes) -> Optional[bytes]:
     if pythoncom is None:  # pragma: no cover - handled in runtime tests
         return None
 
@@ -651,8 +838,21 @@ def _read_equation_native_stream(ole_bytes: bytes) -> Optional[bytes]:
                 pass
 
 
+def _read_equation_native_stream_via_pure_python(ole_bytes: bytes) -> Optional[bytes]:
+    try:
+        compound_file = _OleCompoundFile(ole_bytes)
+        native_stream = compound_file.read_stream("Equation Native")
+        if not native_stream:
+            return None
+        return native_stream
+    except Exception:
+        return None
+
+
 def extract_mathtype_equation_text(ole_bytes: bytes) -> str | None:
-    native_stream = _read_equation_native_stream(ole_bytes)
+    native_stream = _read_equation_native_stream_via_pythoncom(ole_bytes)
+    if not native_stream:
+        native_stream = _read_equation_native_stream_via_pure_python(ole_bytes)
     if not native_stream:
         return None
 
