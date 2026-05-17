@@ -1,0 +1,19 @@
+[project]
+name = "word-exam-bank-backend"
+version = "0.1.0"
+description = "Backend for a Word-based exam question bank"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "pydantic",
+  "sqlalchemy",
+  "alembic",
+  "uvicorn",
+  "httpx",
+  "python-multipart",
+  "rapidocr-onnxruntime",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
