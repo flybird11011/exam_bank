@@ -102,8 +102,8 @@ def test_circle_symbol_label_formulas_stay_as_text():
     assert _should_use_formula_preview_image("⊙O", "以AB为直径的", True) is False
 
 
-def test_malformed_fraction_chain_falls_back_to_preview_image():
-    assert _should_use_formula_preview_image("(A′FBG)/(=)", "∴", True) is True
+def test_malformed_fraction_chain_stays_as_formula_text():
+    assert _should_use_formula_preview_image("(A′FBG)/(=)", "∴", True) is False
 
 
 def test_read_docx_paragraphs_preserves_table_cell_paragraphs():

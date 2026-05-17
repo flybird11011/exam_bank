@@ -153,7 +153,7 @@ def _should_use_formula_preview_image(formula_text: str, paragraph_text: str, al
     if normalized.startswith("⊙") and len(normalized) <= 3:
         return False
 
-    return _formula_text_is_weak(normalized)
+    return False
 
     has_inline_option_context = "\t" in paragraph_text or any(label in paragraph_text for label in ("B.", "C.", "D.", "B．", "C．", "D．", "B。", "C。", "D。", "B、", "C、", "D、"))
 
@@ -208,12 +208,6 @@ def _extract_content_items(
             ref = node.get(R_ID)
             if ref and ref in formula_text_by_ref:
                 formula_text = formula_text_by_ref[ref]
-                preview_ref = preview_image_ref_by_formula_ref.get(ref)
-                if preview_ref and _should_use_formula_preview_image(formula_text, paragraph_text, allow_preview_fallback):
-                    flush_text()
-                    content_items.append(DocxContentItem(kind="asset", asset_ref=preview_ref))
-                    asset_refs.append(preview_ref)
-                    continue
                 flush_text()
                 content_items.append(DocxContentItem(kind="text", text=formula_text, source="formula"))
             continue
