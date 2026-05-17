@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: exam-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: sqlite:///./data/word_exam_bank.db
+    volumes:
+      - ./data:/app/backend/data
+      - ./backend/media:/app/backend/media
+    expose:
+      - "8000"
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: exam-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
