@@ -23,15 +23,15 @@ type PracticeOption = NonNullable<PracticeQuestion["options"]>[number];
 
 function questionStateLabel(question: PracticeQuestion | null) {
   if (!question) {
-    return "skipped and marked mastered";
+    return "未开始";
   }
 
   return [
-    `棰樺彿 ${question.question_no}`,
+    `题号 ${question.question_no}`,
     question.question_type,
-    question.mastered ? "mastered" : "unmastered",
-    `閿?${question.wrong_count}`,
-  ].join(" 路 ");
+    question.mastered ? "已掌握" : "未掌握",
+    `错 ${question.wrong_count}`,
+  ].join(" · ");
 }
 
 function normalizeAnswerText(value: string | null | undefined) {
@@ -46,13 +46,14 @@ function isChoiceQuestion(
 
 function getResultMessage(result: "correct" | "wrong" | "skip") {
   if (result === "skip") {
-    return "skipped and marked mastered";
+    return "已跳过，并标记为已掌握";
   }
 
   if (result === "correct") {
-    return "skipped and marked mastered";
+    return "答对，已自动更新掌握状态";
   }
-    return "skipped and marked mastered";
+
+  return "答错，已自动更新错题次数";
 }
 
 function isCorrectOption(question: PracticeQuestion, option: PracticeOption) {
@@ -65,7 +66,7 @@ function isCorrectOption(question: PracticeQuestion, option: PracticeOption) {
 
 function formatPaperLabel(paper: PaperSummary) {
   const suffix = paper.paper_id.slice(0, 8);
-  return `${paper.title} 路 ${paper.exam_year} 路 ${suffix}`;
+  return `${paper.title} · ${paper.exam_year} · ${suffix}`;
 }
 
 export function PracticePage() {
@@ -133,7 +134,7 @@ export function PracticePage() {
         setPapers(paperList);
       } catch (loadError) {
         if (mounted) {
-          setError(loadError instanceof Error ? loadError.message : "鍔犺浇璇曞嵎澶辫触");
+          setError(loadError instanceof Error ? loadError.message : "加载试卷失败");
         }
       } finally {
         if (mounted) {
@@ -168,9 +169,9 @@ export function PracticePage() {
       setSessionQuestions(response.questions);
       setCurrentIndex(0);
       setRecentAttemptNotice(null);
-      setNotice(`generated ${response.questions.length} questions`);
+      setNotice(`已生成 ${response.questions.length} 道题`);
     } catch (startError) {
-      setError(startError instanceof Error ? startError.message : "create practice session failed");
+      setError(startError instanceof Error ? startError.message : "创建练习场景失败");
     } finally {
       setStartingSession(false);
     }
@@ -182,9 +183,7 @@ export function PracticePage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete paper "${selectedPaper?.title ?? selectedPaperId}"? This will remove the paper and related data.`,
-    );
+    const confirmed = window.confirm(`确定删除试卷“${selectedPaper?.title ?? selectedPaperId}”吗？这会同时删除关联数据。`);
     if (!confirmed) {
       return;
     }
@@ -206,11 +205,12 @@ export function PracticePage() {
       }
       setNotice("试卷已删除");
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "delete paper failed");
+      setError(deleteError instanceof Error ? deleteError.message : "删除试卷失败");
     } finally {
       setStartingSession(false);
     }
   }
+
   async function recordAndAdvance(result: "correct" | "wrong" | "skip", answerPayload: unknown) {
     if (!session || !currentQuestion) {
       return;
@@ -243,10 +243,10 @@ export function PracticePage() {
             : item,
         ),
       );
-      setRecentAttemptNotice(`绗?${questionNo} 棰橈細${getResultMessage(result)}`);
+      setRecentAttemptNotice(`第 ${questionNo} 题：${getResultMessage(result)}`);
       setCurrentIndex((index) => index + 1);
     } catch (attemptError) {
-      setError(attemptError instanceof Error ? attemptError.message : "record attempt failed");
+      setError(attemptError instanceof Error ? attemptError.message : "记录作答失败");
     } finally {
       setSubmittingAttempt(false);
       setFreeformAnswer("");
@@ -301,10 +301,10 @@ export function PracticePage() {
   return (
     <div className="review-grid">
       <aside className="review-nav">
-        <QuestionPanel title="缁冧範妯″紡">
+        <QuestionPanel title="练习模式">
           <form className="question-switcher" onSubmit={handleStartSession}>
             <label className="field-group">
-              <span className="field-label">璇曞嵎</span>
+              <span className="field-label">试卷</span>
               <select
                 className="field-input"
                 value={selectedPaperId}
@@ -312,7 +312,7 @@ export function PracticePage() {
                   setSelectedPaperId(event.target.value);
                 }}
               >
-                <option value="">鍏ㄩ儴璇曞嵎</option>
+                <option value="">全部试卷</option>
                 {papers.map((paper) => (
                   <option key={paper.paper_id} value={paper.paper_id}>
                     {formatPaperLabel(paper)}
@@ -328,16 +328,16 @@ export function PracticePage() {
             </div>
 
             <div className="question-meta-line">
-              <span>{selectedPaper?.subject ?? "all papers"}</span>
+              <span>{selectedPaper?.subject ?? "全部试卷"}</span>
               <span>{selectedPaper?.exam_year ?? ""}</span>
-              <span>{selectedPaper ? `${selectedPaper.question_count} questions` : `${papers.length} papers`}</span>
+              <span>{selectedPaper ? `${selectedPaper.question_count} 题` : `${papers.length} 张试卷`}</span>
             </div>
             <div className="muted-line">
-              {selectedPaper ? formatPaperLabel(selectedPaper) : "All papers"}
+              {selectedPaper ? formatPaperLabel(selectedPaper) : "所有试卷"}
             </div>
 
             <label className="field-group">
-              <span className="field-label">single choice count</span>
+              <span className="field-label">单选题数量</span>
               <input
                 className="field-input"
                 type="number"
@@ -348,7 +348,7 @@ export function PracticePage() {
             </label>
 
             <label className="field-group">
-              <span className="field-label">濉┖鏁伴噺</span>
+              <span className="field-label">填空题数量</span>
               <input
                 className="field-input"
                 type="number"
@@ -359,7 +359,7 @@ export function PracticePage() {
             </label>
 
             <label className="field-group">
-              <span className="field-label">short answer count</span>
+              <span className="field-label">解答题数量</span>
               <input
                 className="field-input"
                 type="number"
@@ -370,7 +370,7 @@ export function PracticePage() {
             </label>
 
             <label className="field-group">
-              <span className="field-label">妯″紡</span>
+              <span className="field-label">模式</span>
               <div className="practice-toggle-row">
                 <label className="practice-toggle">
                   <input
@@ -378,7 +378,7 @@ export function PracticePage() {
                     checked={randomized}
                     onChange={(event) => setRandomized(event.target.checked)}
                   />
-                  闅忔満
+                  随机
                 </label>
                 <label className="practice-toggle">
                   <input
@@ -386,57 +386,57 @@ export function PracticePage() {
                     checked={excludeMastered}
                     onChange={(event) => setExcludeMastered(event.target.checked)}
                   />
-                  宸叉帉鎻＄殑涓嶅嚭
+                  已掌握的不出
                 </label>
               </div>
             </label>
 
             <button type="submit" className="primary-btn" disabled={startingSession || loadingPapers}>
-              {startingSession ? "creating..." : "Start Practice"}
+              {startingSession ? "创建中..." : "开始练习"}
             </button>
           </form>
         </QuestionPanel>
 
-        <QuestionPanel title="褰撳墠杩涘害">
+        <QuestionPanel title="当前进度">
           {!session ? (
-            <div className="empty-state">Create a practice session first.</div>
+            <div className="empty-state">先创建一个练习场景。</div>
           ) : (
             <div className="result-list">
               <div className="result-item">
                 <strong>{session.status}</strong>
-                <div>棰樼洰鏁帮細{sessionQuestions.length}</div>
-                <div>shown: {isSessionComplete ? sessionQuestions.length : Math.min(currentIndex + 1, sessionQuestions.length)}</div>
+                <div>题目数量：{sessionQuestions.length}</div>
+                <div>已显示：{isSessionComplete ? sessionQuestions.length : Math.min(currentIndex + 1, sessionQuestions.length)}</div>
               </div>
               <div className="result-item">
-                <div>single choice: {session.selected_counts.single_choice ?? 0}</div>
-                <div>fill blank: {session.selected_counts.fill_blank ?? 0}</div>
-                <div>short answer: {session.selected_counts.short_answer ?? 0}</div>
+                <div>单选题：{session.selected_counts.single_choice ?? 0}</div>
+                <div>填空题：{session.selected_counts.fill_blank ?? 0}</div>
+                <div>解答题：{session.selected_counts.short_answer ?? 0}</div>
               </div>
               <div className="result-item">
-                <div>available single choice: {session.available_counts.single_choice ?? 0}</div>
-                <div>available fill blank: {session.available_counts.fill_blank ?? 0}</div>
-                <div>available short answer: {session.available_counts.short_answer ?? 0}</div>
+                <div>可用单选题：{session.available_counts.single_choice ?? 0}</div>
+                <div>可用填空题：{session.available_counts.fill_blank ?? 0}</div>
+                <div>可用解答题：{session.available_counts.short_answer ?? 0}</div>
               </div>
             </div>
           )}
         </QuestionPanel>
 
         {loadingPapers ? (
-          <QuestionPanel title="鎻愮ず">
-            <div className="empty-state">璇曞嵎鍔犺浇涓?..</div>
+          <QuestionPanel title="提示">
+            <div className="empty-state">试卷加载中...</div>
           </QuestionPanel>
         ) : null}
       </aside>
 
       <section className="review-main">
-        <QuestionPanel title="缁冧範棰樼洰">
+        <QuestionPanel title="练习题目">
           {!session ? (
-            <div className="empty-state">Select a paper and start practice to see questions here.</div>
+            <div className="empty-state">选择试卷后开始练习，这里会显示题目。</div>
           ) : isSessionComplete ? (
             <div className="result-list">
               <div className="result-item">
-                <strong>缁冧範瀹屾垚</strong>
-                <div>This session has {sessionQuestions.length} questions. Generate another session to continue.</div>
+                <strong>练习完成</strong>
+                <div>本次练习共 {sessionQuestions.length} 题，可重新开始继续练习。</div>
               </div>
             </div>
           ) : currentQuestion ? (
@@ -451,14 +451,14 @@ export function PracticePage() {
               <div className="question-stem-preview">
                 <RichContentBlocks
                   blocks={currentQuestion.stem_blocks ?? []}
-                  emptyLabel={currentQuestion.stem_text || "鏆傛棤棰樺共鏂囨湰"}
+                  emptyLabel={currentQuestion.stem_text || "暂无题干文本"}
                 />
               </div>
 
               {isChoiceQuestion(currentQuestion) ? (
                 <div className="option-list">
                   <div className="choice-selection-hint">
-                    {selectedChoice ? `Selected: ${selectedChoice.option_label}` : "Choose an option, then confirm."}
+                    {selectedChoice ? `已选择：${selectedChoice.option_label}` : "请选择一个选项后再确认。"}
                   </div>
                   {currentQuestion.options.map((option) => (
                     <button
@@ -467,13 +467,13 @@ export function PracticePage() {
                       className={`result-item practice-option-button ${selectedChoiceId === option.id ? "selected" : ""}`}
                       onClick={() => void handleChoiceSelect(option)}
                       disabled={submittingAttempt}
-                      aria-label={`閫夐」 ${option.option_label}`}
+                      aria-label={`选项 ${option.option_label}`}
                       aria-pressed={selectedChoiceId === option.id}
                     >
                       <strong>{option.option_label}</strong>
                       <RichContentBlocks
                         blocks={option.option_blocks ?? []}
-                        emptyLabel={option.option_text || "鏆傛棤閫夐」鍐呭"}
+                        emptyLabel={option.option_text || "暂无选项内容"}
                       />
                     </button>
                   ))}
@@ -484,7 +484,7 @@ export function PracticePage() {
                       onClick={() => setSelectedChoiceId(null)}
                       disabled={submittingAttempt || !selectedChoice}
                     >
-                      鍙栨秷閫夋嫨
+                      取消选择
                     </button>
                     <button
                       type="button"
@@ -492,51 +492,51 @@ export function PracticePage() {
                       onClick={() => void handleChoiceConfirm()}
                       disabled={submittingAttempt || !selectedChoice}
                     >
-                      纭绛旀
+                      确认答案
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="question-edit-grid">
                   <label className="field-group">
-                    <span className="field-label">answer input</span>
+                    <span className="field-label">答案输入</span>
                     <textarea
                       className="field-input field-textarea"
                       rows={4}
                       value={freeformAnswer}
                       onChange={(event) => setFreeformAnswer(event.target.value)}
-                      placeholder="Answers are hidden by default and compared after submit."
+                      placeholder="答案默认隐藏，提交后会自动比对。"
                     />
                   </label>
                   <div className="practice-action-row">
                     <button type="button" className="secondary-btn" onClick={() => void handleSkip()} disabled={submittingAttempt}>
-                      璺宠繃
+                      跳过
                     </button>
                     <button type="button" className="primary-btn" onClick={() => void handleFreeformSubmit()} disabled={submittingAttempt}>
-                      鎻愪氦绛旀
+                      提交答案
                     </button>
                   </div>
                 </div>
               )}
 
-              <div className="practice-answer-hint">Answers stay hidden until you submit, and mastery / wrong count update automatically.</div>
+              <div className="practice-answer-hint">答案默认隐藏，提交后系统会自动判断并更新掌握状态与错题次数。</div>
 
               <div className="practice-action-row">
                 <button type="button" className="secondary-btn" onClick={() => void handleSkip()} disabled={submittingAttempt}>
-                  璺宠繃
+                  跳过
                 </button>
               </div>
             </div>
           ) : (
-            <div className="empty-state">No practice questions available.</div>
+            <div className="empty-state">暂无可练习的题目。</div>
           )}
         </QuestionPanel>
       </section>
 
       <aside className="review-aside">
-        <QuestionPanel title="棰樼洰鍒楄〃">
+        <QuestionPanel title="题目列表">
           {sessionQuestions.length === 0 ? (
-            <div className="empty-state">Create a practice session first.</div>
+            <div className="empty-state">先创建一个练习场景。</div>
           ) : (
             <div className="question-switcher">
               {sessionQuestions.map((question, index) => (
@@ -553,11 +553,11 @@ export function PracticePage() {
           )}
         </QuestionPanel>
 
-        <QuestionPanel title="鎻愮ず">
+        <QuestionPanel title="提示">
           <div className="result-item">
-            <div>Single-choice questions use direct option buttons and auto-judge after submit.</div>
-            <div>Answers stay hidden by default and update after submission.</div>
-            <div>Wrong-question review has moved to its own page.</div>
+            <div>单选题使用选项按钮，提交后自动判定。</div>
+            <div>答案默认隐藏，提交后再显示结果。</div>
+            <div>错题回顾已放到单独页面。</div>
           </div>
         </QuestionPanel>
       </aside>
@@ -565,7 +565,7 @@ export function PracticePage() {
       {notice ? <div className="status-card status-float">{notice}</div> : null}
       {recentAttemptNotice ? (
         <div className="status-card status-float practice-toast">
-          <strong>鏈缁撴灉</strong>
+          <strong>本题结果</strong>
           <div>{recentAttemptNotice}</div>
         </div>
       ) : null}
