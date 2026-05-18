@@ -862,35 +862,35 @@ button {
   .review-tablet-grid .review-nav,
   .review-tablet-grid .review-aside,
   .review-tablet-grid .review-main {
-    gap: 12px;
+    gap: 10px;
   }
 
   .review-tablet-grid .panel,
   .review-tablet-grid .section-card {
-    padding: 12px 14px;
+    padding: 10px 12px;
   }
 
   .review-tablet-grid .question-stem-preview {
-    margin-bottom: 14px;
-    padding: 12px;
+    margin-bottom: 12px;
+    padding: 10px;
   }
 
   .review-tablet-grid .meta-list,
   .review-tablet-grid .result-list {
-    gap: 8px;
+    gap: 6px;
   }
 
   .review-tablet-grid .practice-action-row {
-    gap: 8px;
+    gap: 6px;
   }
 
   .review-tablet-grid .practice-main-toolbar {
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     padding: 2px 0;
   }
 
   .review-tablet-grid .practice-sidebar-toggle {
-    padding: 7px 11px;
+    padding: 6px 10px;
   }
 }
 
