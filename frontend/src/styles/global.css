@@ -745,7 +745,7 @@ button {
   }
 
   .main-pane {
-    padding: 14px 16px;
+    padding: 10px 12px;
   }
 
   .topbar {
@@ -753,11 +753,24 @@ button {
   }
 
   .content-card {
+    padding: 12px;
+  }
+
+  .page-grid {
+    gap: 12px;
+  }
+
+  .hero-block {
+    padding: 8px 4px 4px;
+  }
+
+  .form-card {
     padding: 16px;
+    gap: 12px;
   }
 
   .search-results-card {
-    max-height: calc(100dvh - 320px);
+    max-height: calc(100dvh - 260px);
   }
 
   .practice-grid {
