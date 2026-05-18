@@ -131,6 +131,7 @@ export function ReviewPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const questions = useMemo(() => flattenQuestions(paper), [paper]);
   const selectedQuestion = useMemo(
@@ -457,7 +458,7 @@ export function ReviewPage() {
   const analysisBlocks = getAnalysisBlocks(selectedQuestion);
 
   return (
-    <div className="review-grid">
+    <div className={`review-grid tablet-grid ${isSidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
       <aside className="review-nav">
         <div className="section-card">
           <div className="panel-title">试卷目录</div>
@@ -501,6 +502,19 @@ export function ReviewPage() {
       </aside>
 
       <section className="review-main">
+        <div className="practice-main-toolbar">
+          <div className="practice-main-toolbar-spacer" />
+          <button
+            type="button"
+            className="secondary-btn practice-sidebar-toggle"
+            onClick={() => setIsSidebarOpen((value) => !value)}
+            aria-controls="review-detail-sidebar"
+            aria-expanded={isSidebarOpen}
+          >
+            {isSidebarOpen ? "收起侧栏" : "展开侧栏"}
+          </button>
+        </div>
+
         <QuestionPanel title="题目内容">
           {selectedQuestion ? (
             <>
@@ -674,7 +688,7 @@ export function ReviewPage() {
         </QuestionPanel>
       </section>
 
-      <aside className="review-aside">
+      <aside className="review-aside" id="review-detail-sidebar">
         <QuestionPanel title="元信息">
           {selectedPaper && selectedQuestion ? (
             <ul className="meta-list">

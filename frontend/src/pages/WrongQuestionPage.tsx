@@ -50,6 +50,7 @@ export function WrongQuestionPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const selectedPaper = useMemo(
     () => papers.find((paper) => paper.paper_id === selectedPaperId) ?? null,
@@ -236,7 +237,7 @@ export function WrongQuestionPage() {
   }, [papers.length, selectedPaperId]);
 
   return (
-    <div className="review-grid">
+    <div className={`review-grid tablet-grid ${isSidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
       <aside className="review-nav">
         <QuestionPanel title="错题回顾">
           <div className="question-switcher">
@@ -339,6 +340,19 @@ export function WrongQuestionPage() {
       </aside>
 
       <section className="review-main">
+        <div className="practice-main-toolbar">
+          <div className="practice-main-toolbar-spacer" />
+          <button
+            type="button"
+            className="secondary-btn practice-sidebar-toggle"
+            onClick={() => setIsSidebarOpen((value) => !value)}
+            aria-controls="wrong-question-sidebar"
+            aria-expanded={isSidebarOpen}
+          >
+            {isSidebarOpen ? "收起侧栏" : "展开侧栏"}
+          </button>
+        </div>
+
         <QuestionPanel title="错题详情">
           {detailLoading ? (
             <div className="empty-state">正在加载详情...</div>
@@ -433,7 +447,7 @@ export function WrongQuestionPage() {
         </QuestionPanel>
       </section>
 
-      <aside className="review-aside">
+      <aside className="review-aside" id="wrong-question-sidebar">
         <QuestionPanel title="提示">
           <div className="result-item">
             <div>答案和解析默认隐藏。</div>

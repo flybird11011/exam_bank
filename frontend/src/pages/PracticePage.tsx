@@ -88,6 +88,7 @@ export function PracticePage() {
   const [recentAttemptNotice, setRecentAttemptNotice] = useState<string | null>(null);
   const [freeformAnswer, setFreeformAnswer] = useState("");
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
+  const [isQuestionListOpen, setIsQuestionListOpen] = useState(true);
 
   const currentQuestion = useMemo(() => sessionQuestions[currentIndex] ?? null, [sessionQuestions, currentIndex]);
   const selectedPaper = papers.find((item) => item.paper_id === selectedPaperId) ?? null;
@@ -299,7 +300,7 @@ export function PracticePage() {
   }
 
   return (
-    <div className="review-grid">
+    <div className={`review-grid practice-grid ${isQuestionListOpen ? "question-list-open" : "question-list-collapsed"}`}>
       <aside className="review-nav">
         <QuestionPanel title="练习模式">
           <form className="question-switcher" onSubmit={handleStartSession}>
@@ -429,6 +430,19 @@ export function PracticePage() {
       </aside>
 
       <section className="review-main">
+        <div className="practice-main-toolbar">
+          <div className="practice-main-toolbar-spacer" />
+          <button
+            type="button"
+            className="secondary-btn practice-sidebar-toggle"
+            onClick={() => setIsQuestionListOpen((value) => !value)}
+            aria-controls="practice-question-list"
+            aria-expanded={isQuestionListOpen}
+          >
+            {isQuestionListOpen ? "收起侧栏" : "展开侧栏"}
+          </button>
+        </div>
+
         <QuestionPanel title="练习题目">
           {!session ? (
             <div className="empty-state">选择试卷后开始练习，这里会显示题目。</div>
@@ -533,7 +547,7 @@ export function PracticePage() {
         </QuestionPanel>
       </section>
 
-      <aside className="review-aside">
+      <aside className="review-aside" id="practice-question-list">
         <QuestionPanel title="题目列表">
           {sessionQuestions.length === 0 ? (
             <div className="empty-state">先创建一个练习场景。</div>

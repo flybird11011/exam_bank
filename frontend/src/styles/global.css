@@ -33,8 +33,14 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
+}
+
+button {
+  touch-action: manipulation;
 }
 
 .app-shell {
@@ -50,6 +56,7 @@ input {
   border-right: 1px solid var(--line);
   backdrop-filter: blur(14px);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .brand {
@@ -244,12 +251,14 @@ input {
 .review-aside {
   align-content: start;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .review-main {
   align-content: start;
   overflow-y: auto;
   padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .section-card,
@@ -459,6 +468,7 @@ input {
   overflow-x: auto;
   max-width: 100%;
   padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .inline-content-table table {
@@ -530,6 +540,35 @@ input {
 .practice-question-card {
   display: grid;
   gap: 14px;
+}
+
+.practice-main-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 0;
+  margin-bottom: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 6px 0;
+  background: linear-gradient(180deg, rgba(249, 244, 236, 0.96), rgba(249, 244, 236, 0.82));
+  backdrop-filter: blur(10px);
+}
+
+.practice-main-toolbar-spacer {
+  flex: 1;
+}
+
+.practice-sidebar-toggle {
+  display: none;
+  white-space: nowrap;
+  padding: 10px 14px;
+  border-radius: 999px;
+}
+
+.tablet-grid.sidebar-collapsed .review-aside {
+  display: none;
 }
 
 .practice-answer-hint {
@@ -660,7 +699,179 @@ input {
   color: #8a1f11;
 }
 
-@media (max-width: 1100px) {
+@media (min-width: 960px) and (max-width: 1180px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: grid;
+    gap: 14px;
+    padding: 18px 20px;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    margin-bottom: 0;
+  }
+
+  .nav-list {
+    display: flex;
+    flex-wrap: wrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .nav-item {
+    white-space: nowrap;
+  }
+
+  .main-pane {
+    padding: 18px;
+  }
+
+  .content-card {
+    padding: 18px;
+  }
+
+  .practice-grid {
+    grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
+    grid-template-areas:
+      "nav main"
+      "aside main";
+    align-items: start;
+  }
+
+  .practice-grid.question-list-collapsed {
+    grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
+    grid-template-areas:
+      "nav main"
+      "nav main";
+  }
+
+  .practice-grid .review-nav {
+    grid-area: nav;
+  }
+
+  .practice-grid .review-main {
+    grid-area: main;
+    min-height: 0;
+    padding-right: 0;
+  }
+
+  .practice-grid .review-aside {
+    grid-area: aside;
+  }
+
+  .practice-grid.question-list-collapsed .review-aside {
+    display: none;
+  }
+
+  .practice-grid.question-list-collapsed .review-nav {
+    min-height: 0;
+  }
+
+  .practice-main-toolbar {
+    margin-bottom: 8px;
+  }
+
+  .practice-sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .tablet-grid.sidebar-collapsed {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "nav"
+      "main";
+  }
+
+  .tablet-grid.sidebar-collapsed .review-nav,
+  .tablet-grid.sidebar-collapsed .review-main {
+    min-height: 0;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 959px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: grid;
+    gap: 12px;
+    padding: 16px 18px;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    margin-bottom: 0;
+  }
+
+  .nav-list {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .main-pane {
+    padding: 16px;
+  }
+
+  .content-card {
+    padding: 16px;
+  }
+
+  .review-grid {
+    gap: 14px;
+  }
+
+  .practice-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "nav"
+      "main"
+      "aside";
+  }
+
+  .practice-grid.question-list-collapsed {
+    grid-template-areas:
+      "nav"
+      "main";
+  }
+
+  .practice-grid .review-nav,
+  .practice-grid .review-aside,
+  .practice-grid .review-main {
+    height: auto;
+    min-height: 0;
+  }
+
+  .practice-grid .review-main {
+    padding-right: 0;
+  }
+
+  .practice-sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .tablet-grid.sidebar-collapsed {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "nav"
+      "main";
+  }
+
+  .tablet-grid.sidebar-collapsed .review-nav,
+  .tablet-grid.sidebar-collapsed .review-main {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 767px) {
   .app-shell,
   .page-grid,
   .review-grid {
