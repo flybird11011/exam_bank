@@ -110,6 +110,14 @@ export type QuestionTag = {
   confidence: number | null;
 };
 
+export type TagSummary = {
+  id: string;
+  tag_type: string;
+  name: string;
+  parent_id: string | null;
+  tag_path: string;
+};
+
 export type ReviewLog = {
   id: string;
   target_type: string;
@@ -163,6 +171,7 @@ export type PracticeQuestion = {
 export type PracticeSessionInfo = {
   id: string;
   paper_id: string | null;
+  tag_id: string | null;
   mode: string;
   randomized: boolean;
   exclude_mastered: boolean;
@@ -355,6 +364,21 @@ export async function listQuestionTags(questionId: string): Promise<QuestionTag[
   return response.json();
 }
 
+export async function listTags(params: { tag_type?: string; keyword?: string } = {}): Promise<TagSummary[]> {
+  const url = new URL("/api/tags", window.location.origin);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  });
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error("鑾峰彇鏍囩鍒楄〃澶辫触");
+  }
+  return response.json();
+}
+
 export async function addQuestionTag(
   questionId: string,
   payload: { tag_type: string; name: string; source?: string; confidence?: number },
@@ -420,6 +444,7 @@ export async function listPracticeQuestions(params: {
 
 export async function createPracticeSession(payload: {
   paper_id?: string;
+  tag_id?: string;
   randomized?: boolean;
   exclude_mastered?: boolean;
   single_choice_count?: number;

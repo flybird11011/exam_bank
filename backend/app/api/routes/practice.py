@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/practice")
 
 class PracticeSessionCreate(BaseModel):
     paper_id: str | None = None
+    tag_id: str | None = None
     randomized: bool = False
     exclude_mastered: bool = False
     single_choice_count: int = Field(default=8, ge=0)

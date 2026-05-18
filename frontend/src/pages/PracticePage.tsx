@@ -5,10 +5,12 @@ import {
   createPracticeSession,
   deletePaper,
   listPapers,
+  listTags,
   recordPracticeAttempt,
   type PaperSummary,
   type PracticeQuestion,
   type PracticeSessionInfo,
+  type TagSummary,
 } from "../lib/api";
 import { QuestionPanel } from "../components/QuestionPanel";
 import { RichContentBlocks } from "../components/RichContent";
@@ -69,9 +71,15 @@ function formatPaperLabel(paper: PaperSummary) {
   return `${paper.title} · ${paper.exam_year} · ${suffix}`;
 }
 
+function formatTagLabel(tag: TagSummary) {
+  return `${tag.tag_type} · ${tag.name}`;
+}
+
 export function PracticePage() {
   const [papers, setPapers] = useState<PaperSummary[]>([]);
+  const [tags, setTags] = useState<TagSummary[]>([]);
   const [selectedPaperId, setSelectedPaperId] = useState("");
+  const [selectedTagId, setSelectedTagId] = useState("");
   const [singleChoiceCount, setSingleChoiceCount] = useState(DEFAULT_COUNTS.single_choice);
   const [fillBlankCount, setFillBlankCount] = useState(DEFAULT_COUNTS.fill_blank);
   const [shortAnswerCount, setShortAnswerCount] = useState(DEFAULT_COUNTS.short_answer);
@@ -98,6 +106,19 @@ export function PracticePage() {
 
   const currentQuestion = useMemo(() => sessionQuestions[currentIndex] ?? null, [sessionQuestions, currentIndex]);
   const selectedPaper = papers.find((item) => item.paper_id === selectedPaperId) ?? null;
+  const sortedTags = useMemo(() => {
+    return [...tags].sort((left, right) => {
+      if (left.tag_type === right.tag_type) {
+        return left.name.localeCompare(right.name, "zh-Hans-CN");
+      }
+
+      return left.tag_type.localeCompare(right.tag_type, "zh-Hans-CN");
+    });
+  }, [tags]);
+  const selectedTag = useMemo(
+    () => sortedTags.find((tag) => tag.id === selectedTagId) ?? null,
+    [sortedTags, selectedTagId],
+  );
   const hasSession = sessionQuestions.length > 0;
   const isSessionComplete = hasSession && currentIndex >= sessionQuestions.length;
   const selectedChoice = useMemo(() => {
@@ -172,6 +193,31 @@ export function PracticePage() {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadTags() {
+      try {
+        const tagList = await listTags();
+        if (!mounted) {
+          return;
+        }
+
+        setTags(Array.isArray(tagList) ? tagList : []);
+      } catch {
+        if (mounted) {
+          setTags([]);
+        }
+      }
+    }
+
+    loadTags();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   async function handleStartSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -180,6 +226,7 @@ export function PracticePage() {
     try {
       const response = await createPracticeSession({
         paper_id: selectedPaperId || undefined,
+        tag_id: selectedTagId || undefined,
         randomized,
         exclude_mastered: excludeMastered,
         single_choice_count: singleChoiceCount,
@@ -343,6 +390,18 @@ export function PracticePage() {
               </select>
             </label>
 
+            <label className="field-group">
+              <span className="field-label">标签</span>
+              <select className="field-input" value={selectedTagId} onChange={(event) => setSelectedTagId(event.target.value)}>
+                <option value="">不限标签</option>
+                {sortedTags.map((tag) => (
+                  <option key={tag.id} value={tag.id}>
+                    {formatTagLabel(tag)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <div className="practice-toggle-row">
               <button type="button" className="secondary-btn" onClick={() => void handleDeletePaper()} disabled={startingSession}>
                 删除当前试卷
@@ -357,6 +416,7 @@ export function PracticePage() {
             <div className="muted-line">
               {selectedPaper ? formatPaperLabel(selectedPaper) : "所有试卷"}
             </div>
+            <div className="muted-line">{selectedTag ? `已选标签：${formatTagLabel(selectedTag)}` : "所有标签"}</div>
 
             <label className="field-group">
               <span className="field-label">单选题数量</span>

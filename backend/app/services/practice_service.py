@@ -15,6 +15,8 @@ from app.db.models import (
     QuestionLearningState,
     QuestionOption,
     QuestionPracticeAttempt,
+    QuestionTag,
+    Tag,
 )
 from app.db.session import get_session
 
@@ -156,6 +158,7 @@ def _load_questions_by_type(
     session,
     paper_id: str | None,
     question_type: str,
+    tag_id: str | None = None,
 ) -> list[tuple[Question, QuestionLearningState | None]]:
     stmt = (
         select(Question, QuestionLearningState)
@@ -165,11 +168,15 @@ def _load_questions_by_type(
     if paper_id is not None:
         stmt = stmt.where(Question.paper_id == paper_id)
     stmt = stmt.where(Question.question_type == question_type)
+    if tag_id is not None:
+        tagged_question_ids = select(QuestionTag.question_id).where(QuestionTag.tag_id == tag_id)
+        stmt = stmt.where(Question.id.in_(tagged_question_ids))
     return list(session.execute(stmt).all())
 
 
 def create_practice_session(payload: dict) -> dict:
     paper_id = payload.get("paper_id")
+    tag_id = payload.get("tag_id")
     randomized = bool(payload.get("randomized", False))
     exclude_mastered = bool(payload.get("exclude_mastered", False))
     single_choice_count = int(payload.get("single_choice_count", 8))
@@ -188,6 +195,9 @@ def create_practice_session(payload: dict) -> dict:
             if storage_paper_id is None:
                 raise LookupError("exam_paper")
 
+        if tag_id not in (None, "") and session.get(Tag, tag_id) is None:
+            raise LookupError(tag_id)
+
         requested_counts = {
             "single_choice": single_choice_count,
             "fill_blank": fill_blank_count,
@@ -198,7 +208,7 @@ def create_practice_session(payload: dict) -> dict:
         selected_entries: list[dict] = []
 
         for question_type in QUESTION_TYPE_ORDER:
-            rows = _load_questions_by_type(session, paper_id, question_type)
+            rows = _load_questions_by_type(session, paper_id, question_type, tag_id=tag_id if tag_id not in (None, "") else None)
             if exclude_mastered:
                 rows = [row for row in rows if not row[1] or not row[1].mastered]
             available_counts[question_type] = len(rows)
@@ -232,6 +242,7 @@ def create_practice_session(payload: dict) -> dict:
                 {
                     "scope": scope,
                     "paper_id": paper_id,
+                    "tag_id": tag_id if tag_id not in (None, "") else None,
                     "question_ids": selected_question_ids,
                     "question_counts": requested_counts,
                     "selected_counts": selected_counts,
@@ -248,6 +259,7 @@ def create_practice_session(payload: dict) -> dict:
             "session": {
                 "id": practice_session.id,
                 "paper_id": None if scope == "all_papers" else practice_session.paper_id,
+                "tag_id": tag_id if tag_id not in (None, "") else None,
                 "mode": practice_session.mode,
                 "randomized": practice_session.randomized,
                 "exclude_mastered": practice_session.exclude_mastered,

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.db.models import ExamPaper, Question, QuestionOption
+from app.db.models import ExamPaper, Question, QuestionOption, QuestionTag, Tag
 from app.db.session import get_session
 
 
@@ -258,6 +258,68 @@ def test_practice_session_reports_actual_selected_counts_when_paper_is_short():
         seeded["single_choice_2"],
         seeded["fill_blank_1"],
     ]
+
+
+def test_practice_session_filters_questions_by_tag_id():
+    client = TestClient(app)
+    seeded = _seed_practice_paper(single_choice_total=2, fill_blank_total=1, short_answer_total=1)
+
+    with get_session() as session:
+        selected_tag = Tag(
+            id="tag-practice-difficulty",
+            tag_type="difficulty",
+            name="较难",
+            parent_id=None,
+            tag_path="difficulty/较难",
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(selected_tag)
+        session.add(
+            QuestionTag(
+                id="question-tag-1",
+                question_id=seeded["single_choice_1"],
+                tag_id=selected_tag.id,
+                source="auto",
+                confidence=0.72,
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+        session.add(
+            QuestionTag(
+                id="question-tag-2",
+                question_id=seeded["fill_blank_1"],
+                tag_id=selected_tag.id,
+                source="auto",
+                confidence=0.72,
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+        session.commit()
+
+    response = client.post(
+        "/api/practice/sessions",
+        json={
+            "paper_id": seeded["paper_id"],
+            "tag_id": "tag-practice-difficulty",
+            "single_choice_count": 8,
+            "fill_blank_count": 8,
+            "short_answer_count": 11,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["session"]["question_ids"] == [seeded["single_choice_1"], seeded["fill_blank_1"]]
+    assert body["session"]["available_counts"] == {
+        "single_choice": 1,
+        "fill_blank": 1,
+        "short_answer": 0,
+    }
+    assert body["session"]["selected_counts"] == {
+        "single_choice": 1,
+        "fill_blank": 1,
+        "short_answer": 0,
+    }
 
 
 def test_practice_session_without_paper_id_draws_from_all_papers():
