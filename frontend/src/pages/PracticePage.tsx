@@ -88,9 +88,13 @@ export function PracticePage() {
   const [recentAttemptNotice, setRecentAttemptNotice] = useState<string | null>(null);
   const [freeformAnswer, setFreeformAnswer] = useState("");
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
-  const [isQuestionListOpen, setIsQuestionListOpen] = useState(true);
-  const [isProgressOpen, setIsProgressOpen] = useState(false);
-  const [isPracticeHintOpen, setIsPracticeHintOpen] = useState(false);
+  const [isQuestionListOpen, setIsQuestionListOpen] = useState(() => {
+    if (typeof window === "undefined") {
+      return true;
+    }
+
+    return !window.matchMedia("(min-width: 960px) and (max-width: 1366px)").matches;
+  });
 
   const currentQuestion = useMemo(() => sessionQuestions[currentIndex] ?? null, [sessionQuestions, currentIndex]);
   const selectedPaper = papers.find((item) => item.paper_id === selectedPaperId) ?? null;
@@ -122,6 +126,21 @@ export function PracticePage() {
     setFreeformAnswer("");
     setSelectedChoiceId(null);
   }, [currentQuestion?.question_id]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 960px) and (max-width: 1366px)");
+
+    const syncPracticeAuxState = () => {
+      setIsQuestionListOpen(!mediaQuery.matches);
+    };
+
+    syncPracticeAuxState();
+    mediaQuery.addEventListener("change", syncPracticeAuxState);
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncPracticeAuxState);
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -400,17 +419,9 @@ export function PracticePage() {
           </form>
         </QuestionPanel>
 
-        <QuestionPanel title="当前进度">
-          <button
-            type="button"
-            className="panel-toggle"
-            onClick={() => setIsProgressOpen((value) => !value)}
-            aria-expanded={isProgressOpen}
-          >
-            {isProgressOpen ? "收起" : "展开"}
-          </button>
-          {isProgressOpen ? (
-            !session ? (
+        {isQuestionListOpen ? (
+          <QuestionPanel title="当前进度">
+            {!session ? (
               <div className="empty-state">先创建一个练习场景。</div>
             ) : (
               <div className="result-list">
@@ -430,23 +441,13 @@ export function PracticePage() {
                   <div>可用解答题：{session.available_counts.short_answer ?? 0}</div>
                 </div>
               </div>
-            )
-          ) : (
-            <div className="empty-state">默认折叠，点击展开查看当前练习状态。</div>
-          )}
-        </QuestionPanel>
+            )}
+          </QuestionPanel>
+        ) : null}
 
-        {loadingPapers ? (
+        {isQuestionListOpen && loadingPapers ? (
           <QuestionPanel title="提示">
-            <button
-              type="button"
-              className="panel-toggle"
-              onClick={() => setIsPracticeHintOpen((value) => !value)}
-              aria-expanded={isPracticeHintOpen}
-            >
-              {isPracticeHintOpen ? "收起" : "展开"}
-            </button>
-            {isPracticeHintOpen ? <div className="empty-state">试卷加载中...</div> : <div className="empty-state">默认折叠，试卷加载时可查看提示。</div>}
+            <div className="empty-state">试卷加载中...</div>
           </QuestionPanel>
         ) : null}
       </aside>
@@ -461,7 +462,7 @@ export function PracticePage() {
             aria-controls="practice-question-list"
             aria-expanded={isQuestionListOpen}
           >
-            {isQuestionListOpen ? "收起侧栏" : "展开侧栏"}
+            {isQuestionListOpen ? "收起辅助信息" : "展开辅助信息"}
           </button>
         </div>
 
@@ -591,27 +592,17 @@ export function PracticePage() {
           </QuestionPanel>
         </div>
 
-        <div className="practice-aside-block practice-hint-block">
-          <QuestionPanel title="提示">
-            <button
-              type="button"
-              className="panel-toggle"
-              onClick={() => setIsPracticeHintOpen((value) => !value)}
-              aria-expanded={isPracticeHintOpen}
-            >
-              {isPracticeHintOpen ? "收起" : "展开"}
-            </button>
-            {isPracticeHintOpen ? (
+        {isQuestionListOpen ? (
+          <div className="practice-aside-block practice-hint-block">
+            <QuestionPanel title="提示">
               <div className="result-item">
                 <div>单选题使用选项按钮，提交后自动判定。</div>
                 <div>答案默认隐藏，提交后再显示结果。</div>
                 <div>错题回顾已放到单独页面。</div>
               </div>
-            ) : (
-              <div className="empty-state">默认折叠，需要时再展开查看提示。</div>
-            )}
-          </QuestionPanel>
-        </div>
+            </QuestionPanel>
+          </div>
+        ) : null}
       </aside>
 
       {notice ? <div className="status-card status-float">{notice}</div> : null}
