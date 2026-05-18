@@ -89,6 +89,8 @@ export function PracticePage() {
   const [freeformAnswer, setFreeformAnswer] = useState("");
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
   const [isQuestionListOpen, setIsQuestionListOpen] = useState(true);
+  const [isProgressOpen, setIsProgressOpen] = useState(false);
+  const [isPracticeHintOpen, setIsPracticeHintOpen] = useState(false);
 
   const currentQuestion = useMemo(() => sessionQuestions[currentIndex] ?? null, [sessionQuestions, currentIndex]);
   const selectedPaper = papers.find((item) => item.paper_id === selectedPaperId) ?? null;
@@ -399,32 +401,52 @@ export function PracticePage() {
         </QuestionPanel>
 
         <QuestionPanel title="当前进度">
-          {!session ? (
-            <div className="empty-state">先创建一个练习场景。</div>
+          <button
+            type="button"
+            className="panel-toggle"
+            onClick={() => setIsProgressOpen((value) => !value)}
+            aria-expanded={isProgressOpen}
+          >
+            {isProgressOpen ? "收起" : "展开"}
+          </button>
+          {isProgressOpen ? (
+            !session ? (
+              <div className="empty-state">先创建一个练习场景。</div>
+            ) : (
+              <div className="result-list">
+                <div className="result-item">
+                  <strong>{session.status}</strong>
+                  <div>题目数量：{sessionQuestions.length}</div>
+                  <div>已显示：{isSessionComplete ? sessionQuestions.length : Math.min(currentIndex + 1, sessionQuestions.length)}</div>
+                </div>
+                <div className="result-item">
+                  <div>单选题：{session.selected_counts.single_choice ?? 0}</div>
+                  <div>填空题：{session.selected_counts.fill_blank ?? 0}</div>
+                  <div>解答题：{session.selected_counts.short_answer ?? 0}</div>
+                </div>
+                <div className="result-item">
+                  <div>可用单选题：{session.available_counts.single_choice ?? 0}</div>
+                  <div>可用填空题：{session.available_counts.fill_blank ?? 0}</div>
+                  <div>可用解答题：{session.available_counts.short_answer ?? 0}</div>
+                </div>
+              </div>
+            )
           ) : (
-            <div className="result-list">
-              <div className="result-item">
-                <strong>{session.status}</strong>
-                <div>题目数量：{sessionQuestions.length}</div>
-                <div>已显示：{isSessionComplete ? sessionQuestions.length : Math.min(currentIndex + 1, sessionQuestions.length)}</div>
-              </div>
-              <div className="result-item">
-                <div>单选题：{session.selected_counts.single_choice ?? 0}</div>
-                <div>填空题：{session.selected_counts.fill_blank ?? 0}</div>
-                <div>解答题：{session.selected_counts.short_answer ?? 0}</div>
-              </div>
-              <div className="result-item">
-                <div>可用单选题：{session.available_counts.single_choice ?? 0}</div>
-                <div>可用填空题：{session.available_counts.fill_blank ?? 0}</div>
-                <div>可用解答题：{session.available_counts.short_answer ?? 0}</div>
-              </div>
-            </div>
+            <div className="empty-state">默认折叠，点击展开查看当前练习状态。</div>
           )}
         </QuestionPanel>
 
         {loadingPapers ? (
           <QuestionPanel title="提示">
-            <div className="empty-state">试卷加载中...</div>
+            <button
+              type="button"
+              className="panel-toggle"
+              onClick={() => setIsPracticeHintOpen((value) => !value)}
+              aria-expanded={isPracticeHintOpen}
+            >
+              {isPracticeHintOpen ? "收起" : "展开"}
+            </button>
+            {isPracticeHintOpen ? <div className="empty-state">试卷加载中...</div> : <div className="empty-state">默认折叠，试卷加载时可查看提示。</div>}
           </QuestionPanel>
         ) : null}
       </aside>
@@ -571,11 +593,23 @@ export function PracticePage() {
 
         <div className="practice-aside-block practice-hint-block">
           <QuestionPanel title="提示">
-            <div className="result-item">
-              <div>单选题使用选项按钮，提交后自动判定。</div>
-              <div>答案默认隐藏，提交后再显示结果。</div>
-              <div>错题回顾已放到单独页面。</div>
-            </div>
+            <button
+              type="button"
+              className="panel-toggle"
+              onClick={() => setIsPracticeHintOpen((value) => !value)}
+              aria-expanded={isPracticeHintOpen}
+            >
+              {isPracticeHintOpen ? "收起" : "展开"}
+            </button>
+            {isPracticeHintOpen ? (
+              <div className="result-item">
+                <div>单选题使用选项按钮，提交后自动判定。</div>
+                <div>答案默认隐藏，提交后再显示结果。</div>
+                <div>错题回顾已放到单独页面。</div>
+              </div>
+            ) : (
+              <div className="empty-state">默认折叠，需要时再展开查看提示。</div>
+            )}
           </QuestionPanel>
         </div>
       </aside>

@@ -582,6 +582,20 @@ button {
   gap: 10px;
 }
 
+.panel-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: white;
+  color: var(--accent-strong);
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .practice-query-item {
   width: 100%;
   text-align: left;
@@ -752,6 +766,24 @@ button {
 
   .practice-grid .review-nav {
     grid-area: nav;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  .practice-grid .review-nav > .panel:first-child {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 58%;
+    min-height: 0;
+  }
+
+  .practice-grid .review-nav > .panel:first-child .panel-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
   }
 
   .practice-grid .review-main {
