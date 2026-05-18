@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import type { StemBlock } from "../lib/api";
 
+type TableCellContent = string | { text?: string | null; blocks?: StemBlock[] };
+
 type RichContentProps = {
   blocks: StemBlock[];
   emptyLabel: string;
@@ -25,6 +27,15 @@ function mergeInlineBlocks(blocks: StemBlock[]): StemBlock[] {
   }
 
   return merged;
+}
+
+export function isLabelOnlyBlocks(blocks: StemBlock[], label: string): boolean {
+  if (blocks.length !== 1) {
+    return false;
+  }
+
+  const [block] = blocks;
+  return block.kind === "text" && (block.text ?? "").trim() === label.trim();
 }
 
 function renderBlocks(blocks: StemBlock[]): ReactNode[] {
@@ -55,15 +66,26 @@ function renderBlocks(blocks: StemBlock[]): ReactNode[] {
             <tbody>
               {block.rows.map((row, rowIndex) => (
                 <tr key={`${block.kind}-${paragraphIndex}-row-${rowIndex}`}>
-                  {row.map((cell, cellIndex) =>
-                    cellIndex === 0 ? (
+                  {row.map((cell, cellIndex) => {
+                    const content = cell as TableCellContent;
+                    const cellNode = typeof content === "string" ? (
+                      content
+                    ) : content?.blocks?.length ? (
+                      <div className="inline-content-table-cell-body">
+                        {renderBlocks(content.blocks)}
+                      </div>
+                    ) : (
+                      content?.text ?? ""
+                    );
+
+                    return cellIndex === 0 ? (
                       <th key={`${block.kind}-${paragraphIndex}-cell-${rowIndex}-${cellIndex}`} scope="row">
-                        {cell}
+                        {cellNode}
                       </th>
                     ) : (
-                      <td key={`${block.kind}-${paragraphIndex}-cell-${rowIndex}-${cellIndex}`}>{cell}</td>
-                    ),
-                  )}
+                      <td key={`${block.kind}-${paragraphIndex}-cell-${rowIndex}-${cellIndex}`}>{cellNode}</td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
