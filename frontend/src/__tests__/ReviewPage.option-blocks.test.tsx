@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, test, vi } from "vitest";
 
@@ -97,4 +97,58 @@ test("选项块按原顺序行内显示", async () => {
   const optionPreview = await screen.findByText("A'");
   expect(optionPreview.closest(".option-preview")).toHaveTextContent("A'D // BE");
   expect(optionPreview.closest(".option-preview")?.querySelectorAll(".inline-content-formula")).toHaveLength(2);
+});
+
+test("表格里的字母标签不会作为选项预览内容", async () => {
+  mockedApi.getPaper.mockResolvedValueOnce({
+    paper_id: "paper-1",
+    title: "paper",
+    subject: "math",
+    region: "suzhou",
+    exam_year: 2025,
+    exam_type: "exam",
+    parse_run_id: "run-1",
+    sections: [
+      {
+        id: "section-1",
+        title: "section",
+        section_type: "single_choice",
+        order_no: 1,
+        questions: [
+          {
+            id: "question-1",
+            question_no: "4",
+            question_type: "single_choice",
+            stem_text: "stem",
+            stem_blocks: [],
+            answer_text: "B",
+            analysis_text: "",
+            confidence: 0.92,
+            status: "parsed",
+            options: [
+              {
+                id: "option-a",
+                option_label: "A",
+                option_text: "亭台在水中的“倒影”",
+                option_blocks: [{ kind: "text", text: "A" }],
+                is_correct: false,
+                order_no: 1,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  render(
+    <MemoryRouter>
+      <ReviewPage />
+    </MemoryRouter>,
+  );
+
+  const preview = await screen.findByText("亭台在水中的“倒影”");
+  const optionPreview = preview.closest(".option-preview");
+  expect(optionPreview).toHaveTextContent("亭台在水中的“倒影”");
+  expect(within(optionPreview as HTMLElement).queryByText(/^A$/)).not.toBeInTheDocument();
 });

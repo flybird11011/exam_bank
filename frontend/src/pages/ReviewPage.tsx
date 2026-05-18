@@ -19,7 +19,7 @@ import {
   type StemBlock,
 } from "../lib/api";
 import { QuestionPanel } from "../components/QuestionPanel";
-import { RichContentBlocks } from "../components/RichContent";
+import { RichContentBlocks, isLabelOnlyBlocks } from "../components/RichContent";
 import { TagEditor } from "../components/TagEditor";
 
 function flattenQuestions(paper: PaperDetail | null): PaperQuestion[] {
@@ -88,9 +88,18 @@ function getAnalysisBlocks(question: PaperQuestion | null): StemBlock[] {
   return [];
 }
 
-function getOptionBlocks(question: PaperQuestion | null, optionLabel: string): StemBlock[] {
+function getOptionPreviewBlocks(question: PaperQuestion | null, optionLabel: string, fallbackText: string): StemBlock[] {
   const option = question?.options?.find((item) => item.option_label === optionLabel);
-  return option?.option_blocks ?? [];
+  if (!option) {
+    return fallbackText ? [{ kind: "text", text: fallbackText }] : [];
+  }
+
+  const optionBlocks = option.option_blocks ?? [];
+  if (isLabelOnlyBlocks(optionBlocks, optionLabel)) {
+    return fallbackText ? [{ kind: "text", text: fallbackText }] : [];
+  }
+
+  return optionBlocks.length > 0 ? optionBlocks : fallbackText ? [{ kind: "text", text: fallbackText }] : [];
 }
 
 function updateQuestionInPaper(
@@ -625,7 +634,7 @@ export function ReviewPage() {
                   {option.is_correct ? <span className="correct-badge">正确</span> : null}
                   <div className="option-preview">
                     <RichContentBlocks
-                      blocks={getOptionBlocks(selectedQuestion, option.option_label)}
+                      blocks={getOptionPreviewBlocks(selectedQuestion, option.option_label, option.option_text)}
                       emptyLabel={`选项 ${option.option_label} 暂无可显示内容。`}
                     />
                   </div>
