@@ -752,6 +752,19 @@ button {
 
   .practice-grid .review-nav {
     grid-area: nav;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  .practice-grid .review-nav > .panel:first-child {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .practice-grid .review-nav > .panel:first-child .panel-body {
+    min-height: 0;
   }
 
   .practice-grid .review-main {
