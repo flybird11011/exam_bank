@@ -32,3 +32,11 @@ docker-compose up -d --build
 - Database: `./data/word_exam_bank.db`
 - Media files: `./backend/media`
 - Public site: `http://exam.791127.xyz/`
+
+## Rebulid重新部署代码
+```bash
+cd /opt/exam_bank
+git pull
+docker-compose up -d --build
+
+```
