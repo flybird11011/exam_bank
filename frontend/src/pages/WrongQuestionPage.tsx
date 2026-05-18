@@ -26,12 +26,32 @@ const INITIAL_QUERY_FILTERS: QueryFilters = {
   questionType: "",
 };
 
+type PracticeOption = NonNullable<PracticeQuestionDetail["question"]["options"]>[number];
+
 function questionStateLabel(question: PracticeQuestion | null) {
   if (!question) {
     return "";
   }
 
   return [`题号 ${question.question_no}`, question.question_type, question.mastered ? "已掌握" : "未掌握", `错 ${question.wrong_count}`].join(" · ");
+}
+
+function normalizeAnswerText(value: string | null | undefined) {
+  return (value ?? "").replace(/\s+/g, "").toUpperCase();
+}
+
+function isChoiceQuestion(
+  question: PracticeQuestionDetail["question"] | null,
+): question is PracticeQuestionDetail["question"] & { options: NonNullable<PracticeQuestionDetail["question"]["options"]> } {
+  return Boolean(question?.options?.length);
+}
+
+function isCorrectOption(question: PracticeQuestionDetail["question"], option: PracticeOption) {
+  if (option.is_correct) {
+    return true;
+  }
+
+  return normalizeAnswerText(option.option_label) === normalizeAnswerText(question.answer_text);
 }
 
 export function WrongQuestionPage() {
@@ -51,6 +71,8 @@ export function WrongQuestionPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [freeformAnswer, setFreeformAnswer] = useState("");
+  const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
 
   const selectedPaper = useMemo(
     () => papers.find((paper) => paper.paper_id === selectedPaperId) ?? null,
@@ -61,6 +83,20 @@ export function WrongQuestionPage() {
     () => queryItems.find((item) => item.question_id === selectedQuestionId) ?? null,
     [queryItems, selectedQuestionId],
   );
+
+  const currentQuestion = selectedDetail?.question ?? null;
+  const selectedChoice = useMemo(() => {
+    if (!currentQuestion || !selectedChoiceId) {
+      return null;
+    }
+
+    return currentQuestion.options?.find((option) => option.id === selectedChoiceId) ?? null;
+  }, [currentQuestion, selectedChoiceId]);
+
+  useEffect(() => {
+    setFreeformAnswer("");
+    setSelectedChoiceId(null);
+  }, [currentQuestion?.question_id]);
 
   useEffect(() => {
     let mounted = true;
@@ -115,10 +151,7 @@ export function WrongQuestionPage() {
 
       if (response.items.length > 0) {
         const first = response.items[0];
-        setSelectedQuestionId(first.question_id);
-        setSelectedIndex(0);
-        setSelectedDetail(null);
-        setShowAnswer(false);
+        await openDetail(first.question_id, 0);
       } else {
         setSelectedQuestionId(null);
         setSelectedDetail(null);
@@ -173,7 +206,7 @@ export function WrongQuestionPage() {
     }
   }
 
-  async function handleAttempt(result: "correct" | "wrong" | "skip") {
+  async function recordAndAdvance(result: "correct" | "wrong", answerPayload: unknown) {
     if (!selectedQuestionId) {
       return;
     }
@@ -184,9 +217,9 @@ export function WrongQuestionPage() {
       await recordPracticeAttempt({
         question_id: selectedQuestionId,
         result,
-        answer_payload: null,
+        answer_payload: answerPayload,
       });
-      setNotice(result === "skip" ? "已跳过并记为已掌握" : result === "correct" ? "已记录答对" : "已记录答错");
+      setNotice(result === "correct" ? "已记录答对" : "已记录答错");
       await refreshQuestions();
       const currentIndex = queryItems.findIndex((item) => item.question_id === selectedQuestionId);
       if (currentIndex >= 0) {
@@ -196,7 +229,50 @@ export function WrongQuestionPage() {
       setError(attemptError instanceof Error ? attemptError.message : "记录练习失败");
     } finally {
       setSaving(false);
+      setFreeformAnswer("");
+      setSelectedChoiceId(null);
     }
+  }
+
+  function handleChoiceSelect(option: PracticeOption) {
+    if (!currentQuestion || saving) {
+      return;
+    }
+
+    setSelectedChoiceId(option.id);
+  }
+
+  async function handleChoiceConfirm() {
+    if (!currentQuestion || !selectedChoice) {
+      return;
+    }
+
+    const result: "correct" | "wrong" = isCorrectOption(currentQuestion, selectedChoice) ? "correct" : "wrong";
+
+    await recordAndAdvance(result, {
+      selected_option_id: selectedChoice.id,
+      selected_option_label: selectedChoice.option_label,
+      selected_option_text: selectedChoice.option_text ?? "",
+    });
+  }
+
+  async function handleFreeformSubmit() {
+    if (!currentQuestion) {
+      return;
+    }
+
+    const normalizedInput = normalizeAnswerText(freeformAnswer);
+    if (!normalizedInput) {
+      setError("请输入答案后再确认");
+      return;
+    }
+
+    const result: "correct" | "wrong" =
+      normalizedInput === normalizeAnswerText(currentQuestion.answer_text) ? "correct" : "wrong";
+
+    await recordAndAdvance(result, {
+      answer_text: freeformAnswer,
+    });
   }
 
   async function handleNextQuestion() {
@@ -372,19 +448,56 @@ export function WrongQuestionPage() {
                 />
               </div>
 
-              {selectedDetail.question.options?.length ? (
+              {isChoiceQuestion(currentQuestion) ? (
                 <div className="option-list">
-                  {selectedDetail.question.options.map((option) => (
-                    <div key={option.id} className="result-item">
+                  <div className="choice-selection-hint">
+                    {selectedChoice ? `已选择：${selectedChoice.option_label}` : "请选择一个选项后再确认。"}
+                  </div>
+                  {currentQuestion.options.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={`result-item practice-option-button ${selectedChoiceId === option.id ? "selected" : ""}`}
+                      onClick={() => void handleChoiceSelect(option)}
+                      disabled={saving}
+                      aria-label={`选项 ${option.option_label}`}
+                      aria-pressed={selectedChoiceId === option.id}
+                    >
                       <strong>{option.option_label}</strong>
                       <RichContentBlocks
                         blocks={option.option_blocks ?? []}
                         emptyLabel={option.option_text || "暂无选项内容"}
                       />
-                    </div>
+                    </button>
                   ))}
+                  <div className="practice-action-row">
+                    <button type="button" className="secondary-btn" onClick={() => setSelectedChoiceId(null)} disabled={saving || !selectedChoice}>
+                      取消选择
+                    </button>
+                    <button type="button" className="primary-btn" onClick={() => void handleChoiceConfirm()} disabled={saving || !selectedChoice}>
+                      确认答案
+                    </button>
+                  </div>
                 </div>
-              ) : null}
+              ) : (
+                <div className="question-edit-grid">
+                  <label className="field-group">
+                    <span className="field-label">答案输入</span>
+                    <textarea
+                      className="field-input field-textarea"
+                      rows={4}
+                      value={freeformAnswer}
+                      onChange={(event) => setFreeformAnswer(event.target.value)}
+                      placeholder="答案默认隐藏，提交后会自动比对。"
+                    />
+                  </label>
+                  <div className="practice-action-row">
+                    <button type="button" className="primary-btn" onClick={() => void handleFreeformSubmit()} disabled={saving}>
+                      确认答案
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="practice-action-row">
                 <button type="button" className="secondary-btn" onClick={() => void handlePreviousQuestion()} disabled={saving}>
@@ -398,15 +511,6 @@ export function WrongQuestionPage() {
                 </button>
                 <button type="button" className="secondary-btn" onClick={() => void handleMarkMastered()} disabled={saving}>
                   标记已掌握
-                </button>
-                <button type="button" className="secondary-btn" onClick={() => void handleAttempt("wrong")} disabled={saving}>
-                  答错
-                </button>
-                <button type="button" className="secondary-btn" onClick={() => void handleAttempt("skip")} disabled={saving}>
-                  跳过
-                </button>
-                <button type="button" className="primary-btn" onClick={() => void handleAttempt("correct")} disabled={saving}>
-                  答对
                 </button>
               </div>
 
@@ -450,9 +554,9 @@ export function WrongQuestionPage() {
       <aside className="review-aside" id="wrong-question-sidebar">
         <QuestionPanel title="提示">
           <div className="result-item">
-            <div>答案和解析默认隐藏。</div>
-            <div>“跳过”会按已掌握处理。</div>
-            <div>可以用“下一题”连续回顾。</div>
+            <div>选择题可直接点选选项后确认。</div>
+            <div>填空和简答题用文本输入框作答。</div>
+            <div>“标记已掌握”会直接更新学习状态。</div>
           </div>
         </QuestionPanel>
       </aside>

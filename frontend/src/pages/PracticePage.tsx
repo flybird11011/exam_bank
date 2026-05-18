@@ -3,7 +3,6 @@ import type { FormEvent } from "react";
 
 import {
   createPracticeSession,
-  deletePaper,
   listPapers,
   listTags,
   recordPracticeAttempt,
@@ -246,40 +245,6 @@ export function PracticePage() {
     }
   }
 
-  async function handleDeletePaper() {
-    if (!selectedPaperId) {
-      setError("请先选择要删除的试卷");
-      return;
-    }
-
-    const confirmed = window.confirm(`确定删除试卷“${selectedPaper?.title ?? selectedPaperId}”吗？这会同时删除关联数据。`);
-    if (!confirmed) {
-      return;
-    }
-
-    setStartingSession(true);
-    setError(null);
-    try {
-      await deletePaper(selectedPaperId);
-      const paperList = await listPapers();
-      setPapers(paperList);
-
-      const nextSelectedPaperId = paperList.find((item) => item.paper_id !== selectedPaperId)?.paper_id ?? paperList[0]?.paper_id ?? "";
-
-      setSelectedPaperId(nextSelectedPaperId);
-      if (session?.paper_id === selectedPaperId || !nextSelectedPaperId) {
-        setSession(null);
-        setSessionQuestions([]);
-        setCurrentIndex(0);
-      }
-      setNotice("试卷已删除");
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "删除试卷失败");
-    } finally {
-      setStartingSession(false);
-    }
-  }
-
   async function recordAndAdvance(result: "correct" | "wrong" | "skip", answerPayload: unknown) {
     if (!session || !currentQuestion) {
       return;
@@ -402,23 +367,17 @@ export function PracticePage() {
               </select>
             </label>
 
-            <div className="practice-toggle-row">
-              <button type="button" className="secondary-btn" onClick={() => void handleDeletePaper()} disabled={startingSession}>
-                删除当前试卷
-              </button>
-            </div>
-
             <div className="question-meta-line">
               <span>{selectedPaper?.subject ?? "全部试卷"}</span>
               <span>{selectedPaper?.exam_year ?? ""}</span>
               <span>{selectedPaper ? `${selectedPaper.question_count} 题` : `${papers.length} 张试卷`}</span>
             </div>
-            <div className="muted-line">
-              {selectedPaper ? formatPaperLabel(selectedPaper) : "所有试卷"}
+            <div className="muted-line practice-scope-line">
+              <span>{selectedPaper ? formatPaperLabel(selectedPaper) : "所有试卷"}</span>
+              <span>{selectedTag ? `已选标签：${formatTagLabel(selectedTag)}` : "所有标签"}</span>
             </div>
-            <div className="muted-line">{selectedTag ? `已选标签：${formatTagLabel(selectedTag)}` : "所有标签"}</div>
 
-            <label className="field-group">
+            <label className="field-group practice-count-group">
               <span className="field-label">单选题数量</span>
               <input
                 className="field-input"
@@ -429,7 +388,7 @@ export function PracticePage() {
               />
             </label>
 
-            <label className="field-group">
+            <label className="field-group practice-count-group">
               <span className="field-label">填空题数量</span>
               <input
                 className="field-input"
@@ -440,7 +399,7 @@ export function PracticePage() {
               />
             </label>
 
-            <label className="field-group">
+            <label className="field-group practice-count-group">
               <span className="field-label">解答题数量</span>
               <input
                 className="field-input"
@@ -451,9 +410,9 @@ export function PracticePage() {
               />
             </label>
 
-            <label className="field-group">
+            <label className="field-group practice-mode-group">
               <span className="field-label">模式</span>
-              <div className="practice-toggle-row">
+              <div className="practice-toggle-grid">
                 <label className="practice-toggle">
                   <input
                     type="checkbox"
@@ -606,9 +565,6 @@ export function PracticePage() {
                     />
                   </label>
                   <div className="practice-action-row">
-                    <button type="button" className="secondary-btn" onClick={() => void handleSkip()} disabled={submittingAttempt}>
-                      跳过
-                    </button>
                     <button type="button" className="primary-btn" onClick={() => void handleFreeformSubmit()} disabled={submittingAttempt}>
                       提交答案
                     </button>
