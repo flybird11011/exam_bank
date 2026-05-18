@@ -43,14 +43,16 @@ export function SearchPage() {
         </button>
       </form>
 
-      <div className="status-card">
-        结果数量：{result.total}
-        <div className="result-list">
-          {result.items.map((item) => (
-            <div key={String(item.question_id)} className="result-item">
-              {String(item.question_no)}. {String(item.stem_text)}
-            </div>
-          ))}
+      <div className="status-card search-results-card">
+        <div className="search-results-summary">结果数量：{result.total}</div>
+        <div className="search-results-scroll">
+          <div className="result-list">
+            {result.items.map((item) => (
+              <div key={String(item.question_id)} className="result-item">
+                {String(item.question_no)}. {String(item.stem_text)}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -230,6 +230,23 @@ button {
   min-height: 100px;
 }
 
+.search-results-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.search-results-summary {
+  flex: 0 0 auto;
+}
+
+.search-results-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 12px;
+}
+
 .review-grid {
   grid-template-columns: 220px 1fr 280px;
   grid-template-rows: minmax(0, 1fr);
@@ -731,8 +748,16 @@ button {
     padding: 14px 16px;
   }
 
+  .topbar {
+    display: none;
+  }
+
   .content-card {
     padding: 16px;
+  }
+
+  .search-results-card {
+    max-height: calc(100dvh - 320px);
   }
 
   .practice-grid {
