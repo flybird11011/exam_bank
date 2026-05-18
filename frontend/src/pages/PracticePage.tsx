@@ -548,32 +548,36 @@ export function PracticePage() {
       </section>
 
       <aside className="review-aside" id="practice-question-list">
-        <QuestionPanel title="题目列表">
-          {sessionQuestions.length === 0 ? (
-            <div className="empty-state">先创建一个练习场景。</div>
-          ) : (
-            <div className="question-switcher">
-              {sessionQuestions.map((question, index) => (
-                <button
-                  key={question.question_id}
-                  type="button"
-                  className={`nav-question ${index === currentIndex ? "active" : ""}`}
-                  onClick={() => setCurrentIndex(index)}
-                >
-                  {question.question_no}. {question.question_type}
-                </button>
-              ))}
-            </div>
-          )}
-        </QuestionPanel>
+        <div className="practice-aside-block practice-question-list-block">
+          <QuestionPanel title="题目列表">
+            {sessionQuestions.length === 0 ? (
+              <div className="empty-state">先创建一个练习场景。</div>
+            ) : (
+              <div className="question-switcher">
+                {sessionQuestions.map((question, index) => (
+                  <button
+                    key={question.question_id}
+                    type="button"
+                    className={`nav-question ${index === currentIndex ? "active" : ""}`}
+                    onClick={() => setCurrentIndex(index)}
+                  >
+                    {question.question_no}. {question.question_type}
+                  </button>
+                ))}
+              </div>
+            )}
+          </QuestionPanel>
+        </div>
 
-        <QuestionPanel title="提示">
-          <div className="result-item">
-            <div>单选题使用选项按钮，提交后自动判定。</div>
-            <div>答案默认隐藏，提交后再显示结果。</div>
-            <div>错题回顾已放到单独页面。</div>
-          </div>
-        </QuestionPanel>
+        <div className="practice-aside-block practice-hint-block">
+          <QuestionPanel title="提示">
+            <div className="result-item">
+              <div>单选题使用选项按钮，提交后自动判定。</div>
+              <div>答案默认隐藏，提交后再显示结果。</div>
+              <div>错题回顾已放到单独页面。</div>
+            </div>
+          </QuestionPanel>
+        </div>
       </aside>
 
       {notice ? <div className="status-card status-float">{notice}</div> : null}

@@ -458,7 +458,7 @@ export function ReviewPage() {
   const analysisBlocks = getAnalysisBlocks(selectedQuestion);
 
   return (
-    <div className={`review-grid tablet-grid ${isSidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
+    <div className={`review-grid tablet-grid review-tablet-grid ${isSidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
       <aside className="review-nav">
         <div className="section-card">
           <div className="panel-title">试卷目录</div>

@@ -237,7 +237,7 @@ export function WrongQuestionPage() {
   }, [papers.length, selectedPaperId]);
 
   return (
-    <div className={`review-grid tablet-grid ${isSidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
+    <div className={`review-grid tablet-grid review-tablet-grid ${isSidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
       <aside className="review-nav">
         <QuestionPanel title="错题回顾">
           <div className="question-switcher">

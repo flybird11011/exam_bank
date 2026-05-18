@@ -706,8 +706,8 @@ button {
 
   .sidebar {
     display: grid;
-    gap: 14px;
-    padding: 18px 20px;
+    gap: 12px;
+    padding: 14px 16px;
     border-right: none;
     border-bottom: 1px solid var(--line);
   }
@@ -728,15 +728,15 @@ button {
   }
 
   .main-pane {
-    padding: 18px;
+    padding: 14px 16px;
   }
 
   .content-card {
-    padding: 18px;
+    padding: 16px;
   }
 
   .practice-grid {
-    grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
+    grid-template-columns: minmax(230px, 260px) minmax(0, 1fr);
     grid-template-areas:
       "nav main"
       "aside main";
@@ -744,7 +744,7 @@ button {
   }
 
   .practice-grid.question-list-collapsed {
-    grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
+    grid-template-columns: minmax(230px, 260px) minmax(0, 1fr);
     grid-template-areas:
       "nav main"
       "nav main";
@@ -773,12 +773,22 @@ button {
   }
 
   .practice-main-toolbar {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    padding: 4px 0;
+  }
+
+  .practice-question-list-block {
+    margin-top: 12px;
+  }
+
+  .practice-hint-block {
+    margin-top: 14px;
   }
 
   .practice-sidebar-toggle {
     display: inline-flex;
     align-items: center;
+    padding: 8px 12px;
   }
 
   .tablet-grid.sidebar-collapsed {
@@ -791,6 +801,40 @@ button {
   .tablet-grid.sidebar-collapsed .review-nav,
   .tablet-grid.sidebar-collapsed .review-main {
     min-height: 0;
+  }
+
+  .review-tablet-grid .review-nav,
+  .review-tablet-grid .review-aside,
+  .review-tablet-grid .review-main {
+    gap: 12px;
+  }
+
+  .review-tablet-grid .panel,
+  .review-tablet-grid .section-card {
+    padding: 12px 14px;
+  }
+
+  .review-tablet-grid .question-stem-preview {
+    margin-bottom: 14px;
+    padding: 12px;
+  }
+
+  .review-tablet-grid .meta-list,
+  .review-tablet-grid .result-list {
+    gap: 8px;
+  }
+
+  .review-tablet-grid .practice-action-row {
+    gap: 8px;
+  }
+
+  .review-tablet-grid .practice-main-toolbar {
+    margin-bottom: 4px;
+    padding: 2px 0;
+  }
+
+  .review-tablet-grid .practice-sidebar-toggle {
+    padding: 7px 11px;
   }
 }
 
@@ -856,6 +900,14 @@ button {
   .practice-sidebar-toggle {
     display: inline-flex;
     align-items: center;
+  }
+
+  .practice-question-list-block {
+    margin-top: 10px;
+  }
+
+  .practice-hint-block {
+    margin-top: 12px;
   }
 
   .tablet-grid.sidebar-collapsed {
