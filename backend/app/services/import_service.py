@@ -699,11 +699,27 @@ def build_paper_title(subject: str, region: str, exam_year: int, exam_type: str)
     return f"{exam_year}年{exam_type_part}{subject_part}试卷"
 
 
-def _derive_paper_title(paragraphs: list[DocxParagraph], subject: str, region: str, exam_year: int, exam_type: str) -> str:
+def _derive_paper_title(
+    paragraphs: list[DocxParagraph],
+    subject: str,
+    region: str,
+    exam_year: int,
+    exam_type: str,
+    source_file_name: str | None = None,
+) -> str:
+    structured_title = build_paper_title(subject, region, exam_year, exam_type)
+    if structured_title.strip():
+        return structured_title
+
     for paragraph in paragraphs[:8]:
         title_candidate = paragraph.text.strip()
         if title_candidate and "试卷" in title_candidate:
             return title_candidate
+
+    if source_file_name:
+        source_stem = Path(source_file_name).stem.strip()
+        if source_stem:
+            return source_stem
 
     return build_paper_title(subject, region, exam_year, exam_type)
 
@@ -724,7 +740,7 @@ def import_paper(
 
     parse_run_id = str(uuid4())
     paper_id = str(uuid4())
-    paper_title = _derive_paper_title(paragraphs, subject, region, exam_year, exam_type)
+    paper_title = _derive_paper_title(paragraphs, subject, region, exam_year, exam_type, source_file_name)
     MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(file_path) as archive, get_session() as session:
         relationships = _read_relationship_targets(archive)
