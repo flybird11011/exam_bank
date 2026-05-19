@@ -101,7 +101,6 @@ function renderBlocks(blocks: StemBlock[]): ReactNode[] {
       renderedBlocks.push(
         <figure key={`${block.kind}-${paragraphIndex++}`} className="inline-content-image">
           <img src={block.url} alt={imageName} loading="lazy" />
-          <figcaption>{imageName}</figcaption>
         </figure>,
       );
       continue;

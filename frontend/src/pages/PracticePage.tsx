@@ -15,9 +15,9 @@ import { QuestionPanel } from "../components/QuestionPanel";
 import { RichContentBlocks } from "../components/RichContent";
 
 const DEFAULT_COUNTS = {
-  single_choice: 8,
-  fill_blank: 8,
-  short_answer: 11,
+  single_choice: 30,
+  fill_blank: 30,
+  short_answer: 30,
 } as const;
 
 type PracticeOption = NonNullable<PracticeQuestion["options"]>[number];

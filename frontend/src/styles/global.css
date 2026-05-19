@@ -555,11 +555,6 @@ button {
   object-fit: contain;
 }
 
-.inline-content-image figcaption {
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
 .practice-question-card {
   display: grid;
   gap: 14px;

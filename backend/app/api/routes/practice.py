@@ -20,9 +20,9 @@ class PracticeSessionCreate(BaseModel):
     tag_id: str | None = None
     randomized: bool = False
     exclude_mastered: bool = False
-    single_choice_count: int = Field(default=8, ge=0)
-    fill_blank_count: int = Field(default=8, ge=0)
-    short_answer_count: int = Field(default=11, ge=0)
+    single_choice_count: int = Field(default=30, ge=0)
+    fill_blank_count: int = Field(default=30, ge=0)
+    short_answer_count: int = Field(default=30, ge=0)
 
 
 class PracticeAttemptCreate(BaseModel):

@@ -166,9 +166,9 @@ test("默认全部试卷时也可以开始练习", async () => {
       paper_id: undefined,
       randomized: false,
       exclude_mastered: false,
-      single_choice_count: 8,
-      fill_blank_count: 8,
-      short_answer_count: 11,
+      single_choice_count: 30,
+      fill_blank_count: 30,
+      short_answer_count: 30,
     });
   });
 
@@ -245,39 +245,11 @@ test("练习页不再包含错题查询面板", async () => {
   expect(screen.queryByText("错题列表")).not.toBeInTheDocument();
 });
 
-test("can delete a selected paper from the practice page", async () => {
-  const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-  mockedApi.listPapers.mockResolvedValueOnce([
-    {
-      paper_id: "paper-1",
-      parse_run_id: "run-1",
-      title: "2025 Practice Paper",
-      subject: "math",
-      region: "Suzhou",
-      exam_year: 2025,
-      exam_type: "exam",
-      section_count: 1,
-      question_count: 2,
-      status: "parsed",
-    },
-  ]);
-  mockedApi.listPapers.mockResolvedValueOnce([]);
-
+test("练习页不再包含删除当前试卷按钮", async () => {
   render(<PracticePage />);
 
   await screen.findByText("练习模式");
-  fireEvent.change(screen.getByLabelText("试卷"), { target: { value: "paper-1" } });
-  fireEvent.click(screen.getByRole("button", { name: "删除当前试卷" }));
-
-  await waitFor(() => {
-    expect(mockedApi.deletePaper).toHaveBeenCalledWith("paper-1");
-  });
-
-  await waitFor(() => {
-    expect(screen.getByText("试卷已删除")).toBeInTheDocument();
-  });
-
-  confirmSpy.mockRestore();
+  expect(screen.queryByRole("button", { name: "删除当前试卷" })).not.toBeInTheDocument();
 });
 
 

@@ -12,9 +12,9 @@ from app.db.session import get_session
 
 def _seed_practice_paper(
     *,
-    single_choice_total: int = 8,
-    fill_blank_total: int = 8,
-    short_answer_total: int = 11,
+    single_choice_total: int = 30,
+    fill_blank_total: int = 30,
+    short_answer_total: int = 30,
 ) -> dict[str, str]:
     paper_id = "paper-practice-1"
     question_ids: dict[str, str] = {}
@@ -122,7 +122,7 @@ def _seed_two_practice_papers_for_all_scope() -> dict[str, str]:
     return question_ids
 
 
-def test_practice_session_defaults_to_8_8_11_and_returns_matching_questions():
+def test_practice_session_defaults_to_30_30_30_and_returns_matching_questions():
     client = TestClient(app)
     seeded = _seed_practice_paper()
 
@@ -130,13 +130,13 @@ def test_practice_session_defaults_to_8_8_11_and_returns_matching_questions():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["session"]["single_choice_count"] == 8
-    assert body["session"]["fill_blank_count"] == 8
-    assert body["session"]["short_answer_count"] == 11
-    assert len(body["questions"]) == 27
-    assert [question["question_type"] for question in body["questions"][:8]] == ["single_choice"] * 8
-    assert [question["question_type"] for question in body["questions"][8:16]] == ["fill_blank"] * 8
-    assert [question["question_type"] for question in body["questions"][16:]] == ["short_answer"] * 11
+    assert body["session"]["single_choice_count"] == 30
+    assert body["session"]["fill_blank_count"] == 30
+    assert body["session"]["short_answer_count"] == 30
+    assert len(body["questions"]) == 90
+    assert [question["question_type"] for question in body["questions"][:30]] == ["single_choice"] * 30
+    assert [question["question_type"] for question in body["questions"][30:60]] == ["fill_blank"] * 30
+    assert [question["question_type"] for question in body["questions"][60:]] == ["short_answer"] * 30
 
 
 def test_practice_session_exposes_content_blocks_for_rich_question_rendering():

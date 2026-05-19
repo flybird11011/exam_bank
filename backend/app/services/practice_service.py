@@ -179,9 +179,9 @@ def create_practice_session(payload: dict) -> dict:
     tag_id = payload.get("tag_id")
     randomized = bool(payload.get("randomized", False))
     exclude_mastered = bool(payload.get("exclude_mastered", False))
-    single_choice_count = int(payload.get("single_choice_count", 8))
-    fill_blank_count = int(payload.get("fill_blank_count", 8))
-    short_answer_count = int(payload.get("short_answer_count", 11))
+    single_choice_count = int(payload.get("single_choice_count", 30))
+    fill_blank_count = int(payload.get("fill_blank_count", 30))
+    short_answer_count = int(payload.get("short_answer_count", 30))
 
     with get_session() as session:
         scope = "all_papers" if paper_id in (None, "") else "paper"
