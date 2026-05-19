@@ -54,6 +54,40 @@ def test_build_stem_blocks_keeps_formula_text_items_without_ocr(monkeypatch):
     assert numeric_calls == []
 
 
+def test_build_stem_blocks_keeps_table_paragraphs_even_when_table_text_looks_like_options(monkeypatch):
+    table_paragraph = DocxParagraph(
+        index=0,
+        text="A. 图 A\tB. 图 B\tC. 图 C\tD. 图 D",
+        raw_xml="<w:tbl/>",
+        has_table=True,
+        table_rows=[["A. 图 A", "B. 图 B", "C. 图 C", "D. 图 D"]],
+        content_items=[DocxContentItem(kind="text", text="A. 图 A\tB. 图 B\tC. 图 C\tD. 图 D")],
+    )
+    option_paragraph = DocxParagraph(
+        index=1,
+        text="A. 亭台在水中的“倒影”A\tB. 碧水中变浅的“池底”B\tC. 漏窗在墙壁上的“影子”C\tD. 夕阳下水中的“太阳”D",
+        raw_xml="<w:p/>",
+        content_items=[
+            DocxContentItem(kind="text", text="A. 亭台在水中的“倒影”A\tB. 碧水中变浅的“池底”B\tC. 漏窗在墙壁上的“影子”C\tD. 夕阳下水中的“太阳”D")
+        ],
+    )
+
+    monkeypatch.setattr(import_service, "_store_media_asset", lambda **_kwargs: None)
+    monkeypatch.setattr(import_service, "recognize_small_numeric_image", lambda _path: None)
+
+    blocks = import_service._build_stem_blocks(
+        session=DummySession(),
+        archive=SimpleNamespace(),
+        relationships={},
+        paper_id="paper-1",
+        question_id="question-1",
+        question_paragraphs=[table_paragraph, option_paragraph],
+    )
+
+    assert blocks[0]["kind"] == "table"
+    assert blocks[0]["rows"] == [["A. 图 A", "B. 图 B", "C. 图 C", "D. 图 D"]]
+
+
 def test_build_analysis_blocks_uses_small_text_ocr_for_inline_images(monkeypatch):
     paragraph = DocxParagraph(
         index=0,

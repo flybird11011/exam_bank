@@ -252,33 +252,37 @@ def _has_asset_markers(paragraph: ET.Element, paragraph_xml: str) -> tuple[bool,
     return has_image, has_table, has_formula
 
 
-def _extract_table_cell_text(
+def _extract_table_cell_content(
     archive: zipfile.ZipFile,
     cell: ET.Element,
     relationships: dict[str, str],
-) -> str:
-    cell_parts: list[str] = []
+) -> list[DocxContentItem]:
+    cell_content: list[DocxContentItem] = []
     for paragraph in cell.findall("./w:p", WORD_NS):
         content_items, _ = _extract_content_items(archive, paragraph, relationships, allow_preview_fallback=False)
-        paragraph_text = "".join(item.text or "" for item in content_items if item.kind == "text")
-        if paragraph_text:
-            cell_parts.append(paragraph_text)
-    return "\n".join(cell_parts)
+        cell_content.extend(content_items)
+    return cell_content
 
 
 def _extract_table_rows(
     archive: zipfile.ZipFile,
     table: ET.Element,
     relationships: dict[str, str],
-) -> list[list[str]]:
+) -> tuple[list[list[str]], list[list[list[DocxContentItem]]]]:
     rows: list[list[str]] = []
+    table_cells: list[list[list[DocxContentItem]]] = []
     for row in table.findall(".//w:tr", WORD_NS):
-        cells: list[str] = []
+        row_text_cells: list[str] = []
+        row_cells: list[list[DocxContentItem]] = []
         for cell in row.findall("./w:tc", WORD_NS):
-            cells.append(_extract_table_cell_text(archive, cell, relationships))
-        if cells:
-            rows.append(cells)
-    return rows
+            cell_content = _extract_table_cell_content(archive, cell, relationships)
+            row_cells.append(cell_content)
+            cell_text_parts = [item.text or "" for item in cell_content if item.kind == "text"]
+            row_text_cells.append("\n".join(part for part in cell_text_parts if part))
+        if row_text_cells:
+            rows.append(row_text_cells)
+            table_cells.append(row_cells)
+    return rows, table_cells
 
 
 def _flatten_table_rows(rows: list[list[str]]) -> str:
@@ -313,7 +317,7 @@ def read_docx_paragraphs(docx_path: str) -> list[DocxParagraph]:
         for index, (kind, node) in enumerate(_iter_document_blocks(body), start=0):
             paragraph_xml = ET.tostring(node, encoding="unicode")
             if kind == "table":
-                table_rows = _extract_table_rows(archive, node, relationships)
+                table_rows, table_cells = _extract_table_rows(archive, node, relationships)
                 text = _flatten_table_rows(table_rows)
                 content_items = [DocxContentItem(kind="text", text=text)] if text else []
                 asset_refs: list[str] = []
@@ -327,6 +331,7 @@ def read_docx_paragraphs(docx_path: str) -> list[DocxParagraph]:
                         has_table=True,
                         has_formula=has_formula,
                         table_rows=table_rows,
+                        table_cells=table_cells,
                         asset_refs=asset_refs,
                         content_items=content_items,
                     )
@@ -348,6 +353,7 @@ def read_docx_paragraphs(docx_path: str) -> list[DocxParagraph]:
                     has_table=has_table,
                     has_formula=has_formula,
                     table_rows=None,
+                    table_cells=None,
                     asset_refs=asset_refs,
                     content_items=content_items,
                 )

@@ -18,5 +18,6 @@ class DocxParagraph:
     has_table: bool = False
     has_formula: bool = False
     table_rows: list[list[str]] | None = None
+    table_cells: list[list[list[DocxContentItem]]] | None = None
     asset_refs: list[str] = field(default_factory=list)
     content_items: list[DocxContentItem] = field(default_factory=list)

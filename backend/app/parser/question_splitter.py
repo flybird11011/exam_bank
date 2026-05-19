@@ -67,6 +67,9 @@ def _is_question_start(text: str) -> re.Match[str] | None:
 
 
 def _visible_and_raw_text(item: Any) -> tuple[str, str]:
+    if hasattr(item, "table_rows") and getattr(item, "table_rows"):
+        return "", ""
+
     if hasattr(item, "content_items") and hasattr(item, "text"):
         visible_text = str(getattr(item, "text") or "")
         raw_text = "".join(

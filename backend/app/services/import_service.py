@@ -17,8 +17,8 @@ from sqlalchemy import desc, select
 
 from app.db.models import ContentBlock, ExamPaper, MediaAsset, PaperSection, Question, QuestionOption, ParseRun, QuestionTag
 from app.db.session import get_session
-from app.parser.types import DocxParagraph
-from app.parser.docx_reader import read_docx_paragraphs
+from app.parser.types import DocxContentItem, DocxParagraph
+from app.parser.docx_reader import _extract_table_rows, read_docx_paragraphs
 from app.parser.question_splitter import split_sections_and_questions, _is_section_title
 from app.parser.small_image_ocr import recognize_small_numeric_image, recognize_small_text_image
 from app.services.tag_service import get_or_create_tag
@@ -180,6 +180,9 @@ def _extract_question_spans_from_draft(
 def _stem_paragraphs(question_paragraphs: list[DocxParagraph]) -> list[DocxParagraph]:
     stem_paragraphs: list[DocxParagraph] = []
     for paragraph in question_paragraphs:
+        if paragraph.table_rows:
+            stem_paragraphs.append(paragraph)
+            continue
         stripped = paragraph.text.strip()
         if stripped and (OPTION_START_RE.match(stripped) or any(stripped.startswith(prefix) for prefix in STEM_END_PREFIXES)):
             break
@@ -187,10 +190,102 @@ def _stem_paragraphs(question_paragraphs: list[DocxParagraph]) -> list[DocxParag
     return stem_paragraphs
 
 
+def _serialize_table_cell_content(
+    session,
+    archive: zipfile.ZipFile,
+    relationships: dict[str, str],
+    paper_id: str,
+    question_id: str,
+    cell_content_items: list,
+    media_cache: dict[str, dict],
+) -> dict:
+    text_parts: list[str] = []
+    cell_blocks: list[dict] = []
+    for item in cell_content_items:
+        if isinstance(item, str):
+            text = item.strip()
+            if not text:
+                continue
+            text_parts.append(text)
+            cell_blocks.append({"kind": "text", "text": text})
+            continue
+
+        if item.kind == "text":
+            text = item.text or ""
+            if not text:
+                continue
+            text_parts.append(text)
+            cell_blocks.append({"kind": "text", "text": text, **({"source": item.source} if item.source else {})})
+            continue
+
+        if item.kind == "asset" and item.asset_ref:
+            asset = _store_media_asset(
+                session=session,
+                archive=archive,
+                relationships=relationships,
+                paper_id=paper_id,
+                question_id=question_id,
+                asset_ref=item.asset_ref,
+                media_cache=media_cache,
+            )
+            if asset is not None:
+                cell_blocks.append(
+                    {
+                        "kind": "image",
+                        "asset_ref": item.asset_ref,
+                        "media_asset_id": asset["id"],
+                        "url": asset["storage_url"],
+                        "file_name": asset["file_name"],
+                        "original_file_name": asset["original_file_name"],
+                    }
+                )
+            else:
+                cell_blocks.append({"kind": "image", "asset_ref": item.asset_ref})
+
+    return {"text": "".join(text_parts).strip(), "blocks": cell_blocks}
+
+
+def _rebuild_table_cells_from_raw_xml(
+    paragraph: DocxParagraph,
+    archive: zipfile.ZipFile,
+    relationships: dict[str, str],
+) -> list[list[list[DocxContentItem]]] | None:
+    raw_xml = getattr(paragraph, "raw_xml", None)
+    if not raw_xml:
+        return None
+
+    try:
+        table_element = ET.fromstring(raw_xml)
+    except ET.ParseError:
+        return None
+
+    if not table_element.tag.endswith("}tbl"):
+        return None
+
+    extracted = _extract_table_rows(archive, table_element, relationships)
+    if not isinstance(extracted, tuple) or len(extracted) < 2:
+        return None
+
+    table_cells = extracted[1]
+    return table_cells or None
+
+
+def _table_cells_look_structured(table_cells: list[list[list[DocxContentItem]]]) -> bool:
+    for row in table_cells:
+        for cell_items in row:
+            if not cell_items:
+                continue
+            first_item = cell_items[0]
+            return hasattr(first_item, "kind")
+    return True
+
+
 def _option_paragraphs(question_paragraphs: list[DocxParagraph]) -> list[DocxParagraph]:
     option_paragraphs: list[DocxParagraph] = []
     started = False
     for paragraph in question_paragraphs:
+        if paragraph.table_rows:
+            continue
         stripped = paragraph.text.strip()
         if not started and stripped and OPTION_START_RE.match(stripped):
             started = True
@@ -358,7 +453,32 @@ def _build_stem_blocks(
 
     for paragraph in _stem_paragraphs(question_paragraphs):
         if paragraph.table_rows:
-            table_block = {"kind": "table", "rows": [list(row) for row in paragraph.table_rows]}
+            table_cells = getattr(paragraph, "table_cells", None)
+            if table_cells and not _table_cells_look_structured(table_cells):
+                table_cells = None
+            if not table_cells:
+                table_cells = _rebuild_table_cells_from_raw_xml(paragraph, archive, relationships)
+
+            if table_cells:
+                table_rows = [
+                    [
+                        _serialize_table_cell_content(
+                            session=session,
+                            archive=archive,
+                            relationships=relationships,
+                            paper_id=paper_id,
+                            question_id=question_id,
+                            cell_content_items=cell_items,
+                            media_cache=media_cache,
+                        )
+                        for cell_items in row
+                    ]
+                    for row in table_cells
+                ]
+            else:
+                table_rows = [list(row) for row in paragraph.table_rows]
+
+            table_block = {"kind": "table", "rows": table_rows}
             blocks.append(table_block)
             session.add(
                 ContentBlock(
