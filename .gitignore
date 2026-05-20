@@ -1,0 +1,18 @@
+# Python bytecode and caches
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Test and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+
+# Build outputs and local runtime artifacts
+frontend/dist/
+frontend/node_modules/.vite/
+backend/media/
+*.log
+*.db
