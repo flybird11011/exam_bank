@@ -177,14 +177,21 @@ def _extract_question_spans_from_draft(
     return expanded_spans
 
 
-def _stem_paragraphs(question_paragraphs: list[DocxParagraph]) -> list[DocxParagraph]:
+def _stem_paragraphs(
+    question_paragraphs: list[DocxParagraph],
+    question_type: str | None = None,
+) -> list[DocxParagraph]:
     stem_paragraphs: list[DocxParagraph] = []
     for paragraph in question_paragraphs:
         if paragraph.table_rows:
             stem_paragraphs.append(paragraph)
             continue
         stripped = paragraph.text.strip()
-        if stripped and (OPTION_START_RE.match(stripped) or any(stripped.startswith(prefix) for prefix in STEM_END_PREFIXES)):
+        stop_on_option_labels = question_type != "short_answer"
+        if stripped and (
+            (stop_on_option_labels and OPTION_START_RE.match(stripped))
+            or any(stripped.startswith(prefix) for prefix in STEM_END_PREFIXES)
+        ):
             break
         stem_paragraphs.append(paragraph)
     return stem_paragraphs
@@ -447,11 +454,12 @@ def _build_stem_blocks(
     paper_id: str,
     question_id: str,
     question_paragraphs: list[DocxParagraph],
+    question_type: str | None = None,
 ) -> list[dict]:
     blocks: list[dict] = []
     media_cache: dict[str, dict] = {}
 
-    for paragraph in _stem_paragraphs(question_paragraphs):
+    for paragraph in _stem_paragraphs(question_paragraphs, question_type=question_type):
         if paragraph.table_rows:
             table_cells = getattr(paragraph, "table_cells", None)
             if table_cells and not _table_cells_look_structured(table_cells):
@@ -821,6 +829,7 @@ def import_paper(
                     paper_id=paper_id,
                     question_id=question_id,
                     question_paragraphs=question_paragraphs,
+                    question_type=question.question_type,
                 )
                 stem_json = json.dumps({"stem_blocks": stem_blocks}, ensure_ascii=False)
                 option_blocks_by_label = _build_option_blocks(
