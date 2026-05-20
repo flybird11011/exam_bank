@@ -187,10 +187,14 @@ def _stem_paragraphs(
             stem_paragraphs.append(paragraph)
             continue
         stripped = paragraph.text.strip()
+        has_media = bool(paragraph.has_image or paragraph.has_formula or paragraph.asset_refs)
         stop_on_option_labels = question_type != "short_answer"
         if stripped and (
             (stop_on_option_labels and OPTION_START_RE.match(stripped))
-            or any(stripped.startswith(prefix) for prefix in STEM_END_PREFIXES)
+            or (
+                any(stripped.startswith(prefix) for prefix in STEM_END_PREFIXES)
+                and not (question_type == "short_answer" and has_media)
+            )
         ):
             break
         stem_paragraphs.append(paragraph)
@@ -503,12 +507,23 @@ def _build_stem_blocks(
             continue
 
         paragraph_text = paragraph.text or ""
+        preserve_media_only_marker = (
+            question_type == "short_answer"
+            and (paragraph.has_image or paragraph.has_formula or paragraph.asset_refs)
+            and any(paragraph_text.lstrip().startswith(prefix) for prefix in STEM_END_PREFIXES)
+        )
         should_try_numeric_ocr = any(hint in paragraph_text for hint in NUMERIC_OCR_HINTS) and any(
             ch.isdigit() for ch in paragraph_text
         )
         for item in paragraph.content_items:
             if item.kind == "text":
                 text = item.text or ""
+                if preserve_media_only_marker:
+                    stripped_text = text.lstrip()
+                    for prefix in STEM_END_PREFIXES:
+                        if stripped_text.startswith(prefix):
+                            text = stripped_text[len(prefix) :].lstrip()
+                            break
                 if not text:
                     continue
                 block = {"kind": "text", "text": text}
